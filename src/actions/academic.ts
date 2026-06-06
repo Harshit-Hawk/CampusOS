@@ -154,7 +154,7 @@ export async function enrollBatchToSubject(batchId: string, subjectId: string) {
   if (!students || students.length === 0) return { error: 'No students found matching this batch pattern' }
 
   // 3. Create student_subjects entries
-  const inserts = students.map(student => ({
+  const inserts = students.map((student: any) => ({
     student_id: student.id,
     subject_id: subjectId
   }))
