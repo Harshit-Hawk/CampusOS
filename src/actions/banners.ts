@@ -20,7 +20,7 @@ export interface EventBanner {
 }
 
 async function verifyAdmin() {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -28,7 +28,7 @@ async function verifyAdmin() {
 }
 
 export async function fetchActiveBanners() {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('event_banners')
     .select('*')
@@ -47,7 +47,7 @@ export async function fetchAdminBanners() {
   const isAdmin = await verifyAdmin()
   if (!isAdmin) return { error: 'Unauthorized', banners: [] }
 
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('event_banners')
     .select('*')
@@ -81,7 +81,7 @@ export async function createBanner(payload: BannerPayload) {
     
     if (target_date === '') target_date = null
 
-    const supabase = await createClient() as any
+    const supabase = await createClient()
 
     const { error } = await supabase
       .from('event_banners')
@@ -137,7 +137,7 @@ export async function updateBanner(id: string, payload: BannerPayload) {
       updates.image_url = image_url
     }
 
-    const supabase = await createClient() as any
+    const supabase = await createClient()
 
     const { error } = await supabase
       .from('event_banners')
@@ -162,7 +162,7 @@ export async function deleteBanner(id: string) {
   const isAdmin = await verifyAdmin()
   if (!isAdmin) return { error: 'Unauthorized' }
 
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { error } = await supabase.from('event_banners').delete().eq('id', id)
   
   if (error) return { error: error.message }

@@ -6,7 +6,7 @@ export type Timeframe = 'weekly' | 'monthly' | 'semester' | 'all-time'
 export type Scope = 'global' | 'department' | 'club'
 
 export async function getLeaderboard(timeframe: Timeframe, scope: Scope, scopeId?: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
 
   // Base query for profiles: Exclude admin and faculty
   let query = supabase
@@ -70,7 +70,7 @@ export async function getLeaderboard(timeframe: Timeframe, scope: Scope, scopeId
 }
 
 export async function getClubLeaderboard() {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
 
   // For this Phase 10 request, clubs rank by total score: activity + engagement + growth
   // Since we don't have a computed column, we fetch all and sort in memory for simplicity

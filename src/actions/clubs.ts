@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { XP_REWARDS } from '@/lib/constants'
 
 export async function fetchClubs(search?: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
 
   let query = supabase
     .from('clubs')
@@ -22,7 +22,7 @@ export async function fetchClubs(search?: string) {
 }
 
 export async function fetchClub(clubId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: club, error } = await supabase
@@ -101,7 +101,7 @@ export async function fetchClub(clubId: string) {
 }
 
 export async function joinClub(clubId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -127,7 +127,7 @@ export async function joinClub(clubId: string) {
 }
 
 export async function leaveClub(clubId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -142,7 +142,7 @@ export async function leaveClub(clubId: string) {
 }
 
 export async function createClub(formData: FormData) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -165,7 +165,7 @@ export async function createClub(formData: FormData) {
 }
 
 export async function applyToClub(clubId: string, message: string, positionId?: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -197,7 +197,7 @@ export async function applyToClub(clubId: string, message: string, positionId?: 
 }
 
 export async function fetchClubApplications(clubId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('club_applications')
     .select('*, profiles(*)')
@@ -210,7 +210,7 @@ export async function fetchClubApplications(clubId: string) {
 }
 
 export async function processApplication(applicationId: string, status: 'approved' | 'rejected') {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   
   const { data: app, error: updateErr } = await (supabase.from('club_applications') as any)
     .update({ status, updated_at: new Date().toISOString() })
@@ -254,7 +254,7 @@ export async function processApplication(applicationId: string, status: 'approve
 
 // --- Phase 10: Club Feed & Announcements ---
 export async function fetchClubAnnouncements(clubId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data, error } = await (supabase as any)
     .from('club_announcements')
     .select('*, profiles(*)')
@@ -266,7 +266,7 @@ export async function fetchClubAnnouncements(clubId: string) {
 }
 
 export async function postClubAnnouncement(clubId: string, title: string, content: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -283,7 +283,7 @@ export async function postClubAnnouncement(clubId: string, title: string, conten
 
 // --- Phase 10: Club Positions ---
 export async function fetchClubPositions(clubId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data, error } = await (supabase as any)
     .from('club_positions')
     .select('*')
@@ -296,7 +296,7 @@ export async function fetchClubPositions(clubId: string) {
 }
 
 export async function createClubPosition(clubId: string, title: string, description: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { error } = await (supabase as any).from('club_positions').insert({
     club_id: clubId,
     title,
@@ -310,7 +310,7 @@ export async function createClubPosition(clubId: string, title: string, descript
 
 // --- Phase 10: Role Management ---
 export async function promoteClubMember(clubId: string, targetUserId: string, newRole: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   
   const { error } = await (supabase.from('club_members') as any)
     .update({ role: newRole })

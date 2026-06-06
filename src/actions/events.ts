@@ -5,7 +5,7 @@ import { XP_REWARDS } from '@/lib/constants'
 import { awardXP } from './gamification'
 
 export async function fetchEvents(filter?: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   let query = supabase
@@ -50,7 +50,7 @@ export async function fetchEvents(filter?: string) {
 }
 
 export async function fetchEvent(eventId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: event, error } = await supabase
@@ -103,7 +103,7 @@ export async function fetchEvent(eventId: string) {
 }
 
 export async function registerForEvent(eventId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -132,7 +132,7 @@ export async function registerForEvent(eventId: string) {
 }
 
 export async function unregisterFromEvent(eventId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -147,7 +147,7 @@ export async function unregisterFromEvent(eventId: string) {
 }
 
 export async function createEvent(formData: FormData) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -188,7 +188,7 @@ export async function createEvent(formData: FormData) {
 }
 
 export async function volunteerForEvent(eventId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -216,7 +216,7 @@ export async function volunteerForEvent(eventId: string) {
 }
 
 export async function fetchEventVolunteers(eventId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('event_volunteers')
     .select('*, profiles(*)')
@@ -228,7 +228,7 @@ export async function fetchEventVolunteers(eventId: string) {
 }
 
 export async function processVolunteer(volunteerId: string, status: 'approved' | 'rejected') {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   
   const { data: vol, error: updateErr } = await (supabase.from('event_volunteers') as any)
     .update({ status })
@@ -251,7 +251,7 @@ export async function processVolunteer(volunteerId: string, status: 'approved' |
 }
 
 export async function checkInAttendee(eventId: string, targetUserId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   
   const { error } = await (supabase.from('event_attendees') as any)
     .insert({ event_id: eventId, user_id: targetUserId })
@@ -308,7 +308,7 @@ export async function checkInAttendee(eventId: string, targetUserId: string) {
 }
 
 export async function fetchEventAttendees(eventId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('event_attendees')
     .select('*, profiles(*)')
@@ -322,7 +322,7 @@ export async function fetchEventAttendees(eventId: string) {
 // --- Bookmarks & Reminders ---
 
 export async function toggleEventBookmark(eventId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -342,7 +342,7 @@ export async function toggleEventBookmark(eventId: string) {
 }
 
 export async function toggleEventReminder(eventId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
