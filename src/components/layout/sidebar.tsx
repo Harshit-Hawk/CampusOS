@@ -28,12 +28,14 @@ const navItems = [
   { href: '/events', label: 'Events', icon: CalendarDays },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { href: '/wallet', label: 'Wallet', icon: CreditCard },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
-function NavLink({ href, label, icon: Icon, isActive, collapsed }: { href: string, label: string, icon: any, isActive: boolean, collapsed: boolean }) {
+function NavLink({ href, label, icon: Icon, isActive, collapsed, onClick }: { href: string, label: string, icon: any, isActive: boolean, collapsed: boolean, onClick?: () => void }) {
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group',
         isActive
@@ -99,7 +101,7 @@ export function Sidebar({ user, mobileOpen, setMobileOpen }: SidebarProps) {
       <div className="flex items-center gap-3 p-6 pb-4 border-b border-[hsl(var(--border)/0.3)] mb-2 min-h-[80px]">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-2 -ml-2 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] shrink-0"
+          className="p-2 -ml-2 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] shrink-0 hidden lg:block"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -136,6 +138,7 @@ export function Sidebar({ user, mobileOpen, setMobileOpen }: SidebarProps) {
             icon={item.icon}
             isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
             collapsed={collapsed}
+            onClick={() => setMobileOpen?.(false)}
           />
         ))}
 
@@ -150,6 +153,7 @@ export function Sidebar({ user, mobileOpen, setMobileOpen }: SidebarProps) {
                 icon={item.icon}
                 isActive={pathname.startsWith(item.href)}
                 collapsed={collapsed}
+                onClick={() => setMobileOpen?.(false)}
               />
             ))}
           </>
@@ -163,6 +167,7 @@ export function Sidebar({ user, mobileOpen, setMobileOpen }: SidebarProps) {
               icon={BookOpen}
               isActive={pathname.startsWith('/academic/student')}
               collapsed={collapsed}
+              onClick={() => setMobileOpen?.(false)}
             />
           </div>
         )}
@@ -175,6 +180,7 @@ export function Sidebar({ user, mobileOpen, setMobileOpen }: SidebarProps) {
               icon={BookOpen}
               isActive={pathname.startsWith('/academic/faculty')}
               collapsed={collapsed}
+              onClick={() => setMobileOpen?.(false)}
             />
           </div>
         )}
@@ -187,40 +193,11 @@ export function Sidebar({ user, mobileOpen, setMobileOpen }: SidebarProps) {
               icon={BookOpen}
               isActive={pathname.startsWith('/admin/academic')}
               collapsed={collapsed}
+              onClick={() => setMobileOpen?.(false)}
             />
           </div>
         )}
       </nav>
-
-      {/* Bottom section */}
-      <div className="p-3 border-t border-[hsl(var(--border)/0.3)] flex flex-col gap-1">
-        <NavLink
-          href="/settings"
-          label="Settings"
-          icon={Settings}
-          isActive={pathname.startsWith('/settings')}
-          collapsed={collapsed}
-        />
-        <form action={signOut} className="w-full">
-          <button
-            type="submit"
-            className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 w-full text-left group',
-              'text-[hsl(var(--muted-foreground))] hover:text-red-500 hover:bg-red-500/10 dark:hover:text-red-400',
-              collapsed && 'justify-center px-2'
-            )}
-            title="Sign out"
-          >
-            <div className={cn(
-              "flex items-center justify-center transition-transform duration-300",
-              "group-hover:scale-110"
-            )}>
-              <LogOut className="w-5 h-5 flex-shrink-0" />
-            </div>
-            {!collapsed && <span className="text-sm tracking-wide">Sign out</span>}
-          </button>
-        </form>
-      </div>
     </aside>
     </>
   )

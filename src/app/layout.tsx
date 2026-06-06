@@ -1,13 +1,29 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { ThemeProvider } from "@/providers/theme-provider"
 import { QueryProvider } from "@/providers/query-provider"
 import { Toaster } from "sonner"
 import "./globals.css"
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "white" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f172a" }
+  ],
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+}
+
 export const metadata: Metadata = {
   title: "CampusOS — Student Engagement Platform",
   description: "The modern campus operating system. Connect, collaborate, and grow with your campus community through clubs, events, and gamified achievements.",
   keywords: ["campus", "student", "engagement", "clubs", "events", "social"],
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "CampusOS",
+  },
 }
 
 export default function RootLayout({
