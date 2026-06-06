@@ -1,0 +1,497 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { markAttendance, createAssignment, gradeSubmission, uploadExamMarks, fetchSubjectAttendance } from '@/actions/academic'
+import { CheckCircle, Users, BookOpen, Clock, FileText, ChevronDown, Check, X, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import { EmptyState } from '@/components/ui/empty-state'
+
+type Tab = 'attendance' | 'assignments' | 'marks'
+
+export function FacultyAcademicClient({ subjects, timetable, assignments, submissions, subjectStudents }: any) {
+  const [activeTab, setActiveTab] = useState<Tab>('attendance')
+  
+  if (subjects.length === 0) {
+    return (
+      <EmptyState 
+        icon={BookOpen} 
+        title="No Subjects Assigned" 
+        description="You are not currently assigned to teach any subjects." 
+      />
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Tabs */}
+      <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-none">
+        {[
+          { id: 'attendance', label: 'Take Attendance', icon: CheckCircle },
+          { id: 'assignments', label: 'Assignments', icon: FileText },
+          { id: 'marks', label: 'Upload Marks', icon: BookOpen },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as Tab)}
+            className={cn(
+              'flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap border',
+              activeTab === tab.id
+                ? 'bg-[hsl(var(--background))] border-[hsl(var(--border))] text-[hsl(var(--foreground))] shadow-sm'
+                : 'bg-transparent border-transparent text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]'
+            )}
+          >
+            <tab.icon className={cn("w-4 h-4", activeTab === tab.id && "text-blue-500")} />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'attendance' && <AttendanceTab subjects={subjects} subjectStudents={subjectStudents} />}
+      {activeTab === 'assignments' && <AssignmentsTab subjects={subjects} assignments={assignments} submissions={submissions} />}
+      {activeTab === 'marks' && <MarksTab subjects={subjects} subjectStudents={subjectStudents} />}
+    </div>
+  )
+}
+
+function AttendanceTab({ subjects, subjectStudents }: { subjects: any[], subjectStudents: Record<string, any[]> }) {
+  const [subjectId, setSubjectId] = useState(subjects[0].id)
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [attendance, setAttendance] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(false)
+  const [existingRecords, setExistingRecords] = useState<any[]>([])
+
+  const students = subjectStudents[subjectId] || []
+
+  // Load existing attendance if date changes
+  useEffect(() => {
+    async function load() {
+      const res = await fetchSubjectAttendance(subjectId)
+      if (res.attendance) {
+        const recordsForDate = res.attendance.filter((a: any) => a.date === date)
+        const initialMap: Record<string, string> = {}
+        students.forEach((s: any) => {
+          const rec = recordsForDate.find((r: any) => r.student_id === s.id)
+          initialMap[s.id] = rec ? rec.status : 'present' // default to present
+        })
+        setAttendance(initialMap)
+        setExistingRecords(recordsForDate)
+      }
+    }
+    load()
+  }, [subjectId, date, students])
+
+  const handleSubmit = async () => {
+    setLoading(true)
+    const records = Object.entries(attendance).map(([student_id, status]) => ({ student_id, status }))
+    const res = await markAttendance(subjectId, date, records)
+    if (res.error) toast.error(res.error)
+    else toast.success('Attendance saved!')
+    setLoading(false)
+  }
+
+  return (
+    <div className="glass rounded-2xl p-6">
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex-1">
+          <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Subject</label>
+          <select 
+            value={subjectId} 
+            onChange={e => setSubjectId(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          >
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
+          </select>
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Date</label>
+          <input 
+            type="date" 
+            value={date} 
+            onChange={e => setDate(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {students.length === 0 ? (
+          <EmptyState 
+            icon={Users} 
+            title="No students enrolled" 
+            description="There are currently no students enrolled in this subject." 
+            className="py-8 bg-transparent shadow-none border-0"
+          />
+        ) : (
+          students.map((student: any) => (
+            <div key={student.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-3 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.5)]">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-white text-xs font-semibold shrink-0">
+                  {student.avatar_url ? <img src={student.avatar_url} className="w-full h-full rounded-full object-cover" /> : student.full_name.charAt(0)}
+                </div>
+                <p className="text-sm font-medium">{student.full_name}</p>
+              </div>
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                {['present', 'absent', 'late', 'excused'].map(status => (
+                  <button
+                    key={status}
+                    onClick={() => setAttendance(prev => ({ ...prev, [student.id]: status }))}
+                    className={cn(
+                      "px-3 py-1 rounded-lg text-xs font-medium transition-colors border",
+                      attendance[student.id] === status 
+                        ? status === 'present' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/50' :
+                          status === 'absent' ? 'bg-red-500/10 text-red-500 border-red-500/50' :
+                          'bg-amber-500/10 text-amber-500 border-amber-500/50'
+                        : 'bg-transparent text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]'
+                    )}
+                  >
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {students.length > 0 && (
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="mt-6 w-full py-2.5 rounded-xl gradient-primary text-white font-medium text-sm flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Attendance'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function AssignmentsTab({ subjects, assignments, submissions }: { subjects: any[], assignments: any[], submissions: any[] }) {
+  const [showCreate, setShowCreate] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    subject_id: subjects[0].id,
+    title: '',
+    description: '',
+    due_date: '',
+    max_marks: 100
+  })
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    const res = await createAssignment({
+      ...formData,
+      due_date: new Date(formData.due_date).toISOString()
+    })
+    if (res.error) toast.error(res.error)
+    else {
+      toast.success('Assignment created!')
+      setShowCreate(false)
+      window.location.reload()
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Manage Assignments</h2>
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 transition-colors"
+        >
+          {showCreate ? 'Cancel' : 'Post Assignment'}
+        </button>
+      </div>
+
+      {showCreate && (
+        <form onSubmit={handleCreate} className="glass rounded-2xl p-6 space-y-4 animate-fade-in">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Subject</label>
+              <select 
+                value={formData.subject_id} 
+                onChange={e => setFormData({ ...formData, subject_id: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              >
+                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Max Marks</label>
+              <input 
+                type="number" 
+                value={formData.max_marks} 
+                onChange={e => setFormData({ ...formData, max_marks: Number(e.target.value) })}
+                required
+                className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Title</label>
+            <input 
+              type="text" 
+              value={formData.title} 
+              onChange={e => setFormData({ ...formData, title: e.target.value })}
+              required
+              className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Description</label>
+            <textarea 
+              value={formData.description} 
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              rows={3}
+              required
+              className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Due Date & Time</label>
+            <input 
+              type="datetime-local" 
+              value={formData.due_date} 
+              onChange={e => setFormData({ ...formData, due_date: e.target.value })}
+              required
+              className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 rounded-xl gradient-primary text-white font-medium text-sm flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Assignment'}
+          </button>
+        </form>
+      )}
+
+      <div className="space-y-4">
+        {assignments.length === 0 ? (
+          <EmptyState 
+            icon={FileText} 
+            title="No assignments posted" 
+            description="You haven't posted any assignments for this subject yet." 
+          />
+        ) : (
+          assignments.map((assignment: any) => {
+            const assignmentSubs = submissions.filter((s: any) => s.assignment_id === assignment.id)
+            return (
+              <div key={assignment.id} className="glass rounded-2xl p-5">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500 mb-2 inline-block">
+                      {assignment.subjects?.code}
+                    </span>
+                    <h3 className="font-semibold text-base">{assignment.title}</h3>
+                    <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Due: {new Date(assignment.due_date).toLocaleString()}</p>
+                  </div>
+                  <div className="text-xs px-3 py-1 bg-[hsl(var(--muted))] rounded-lg">
+                    {assignmentSubs.length} Submissions
+                  </div>
+                </div>
+
+                {assignmentSubs.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-[hsl(var(--border)/0.5)] space-y-3">
+                    {assignmentSubs.map((sub: any) => (
+                      <GradingRow key={sub.id} submission={sub} maxMarks={assignment.max_marks} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </div>
+    </div>
+  )
+}
+
+function GradingRow({ submission, maxMarks }: { submission: any, maxMarks: number }) {
+  const [marks, setMarks] = useState(submission.marks_obtained?.toString() || '')
+  const [feedback, setFeedback] = useState(submission.feedback || '')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    setSaving(true)
+    const res = await gradeSubmission(submission.id, Number(marks), feedback)
+    if (res.error) toast.error(res.error)
+    else toast.success('Grades saved')
+    setSaving(false)
+  }
+
+  return (
+    <div className="p-4 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))]">
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-medium text-sm flex items-center gap-2">
+          {submission.profiles?.avatar_url ? <img src={submission.profiles.avatar_url} className="w-6 h-6 rounded-full object-cover" /> : null}
+          {submission.profiles?.full_name}
+        </p>
+        <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{new Date(submission.submitted_at).toLocaleString()}</span>
+      </div>
+      
+      {submission.file_url && (
+        <a href={submission.file_url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline mb-2 block truncate">
+          Attached File: {submission.file_url.split('/').pop()}
+        </a>
+      )}
+      {submission.content && (
+        <div className="text-sm text-[hsl(var(--muted-foreground))] mb-3 bg-[hsl(var(--muted)/0.3)] p-2 rounded-lg text-ellipsis overflow-hidden whitespace-nowrap">
+          {submission.content}
+        </div>
+      )}
+
+      <div className="flex gap-2 mt-3 items-center">
+        <input 
+          type="number" 
+          value={marks} 
+          onChange={e => setMarks(e.target.value)}
+          placeholder={`/${maxMarks}`}
+          className="w-20 px-2 py-1.5 rounded-lg bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm focus:outline-none"
+        />
+        <input 
+          type="text" 
+          value={feedback} 
+          onChange={e => setFeedback(e.target.value)}
+          placeholder="Feedback (optional)"
+          className="flex-1 px-3 py-1.5 rounded-lg bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm focus:outline-none"
+        />
+        <button 
+          onClick={handleSave}
+          disabled={saving || !marks}
+          className="px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-medium hover:bg-blue-600 disabled:opacity-50"
+        >
+          {saving ? '...' : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function MarksTab({ subjects, subjectStudents }: { subjects: any[], subjectStudents: Record<string, any[]> }) {
+  const [subjectId, setSubjectId] = useState(subjects[0].id)
+  const [examType, setExamType] = useState('internal_1')
+  const [maxMarks, setMaxMarks] = useState(50)
+  const [marks, setMarks] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(false)
+
+  const students = subjectStudents[subjectId] || []
+
+  const handleSubmit = async () => {
+    setLoading(true)
+    const records = Object.entries(marks)
+      .filter(([_, m]) => m !== '')
+      .map(([student_id, m]) => ({ student_id, marks_obtained: Number(m), max_marks: maxMarks }))
+    
+    if (records.length === 0) {
+      toast.error('No marks entered')
+      setLoading(false)
+      return
+    }
+
+    const res = await uploadExamMarks(subjectId, examType, records)
+    if (res.error) toast.error(res.error)
+    else {
+      toast.success('Marks uploaded successfully!')
+      setMarks({})
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="glass rounded-2xl p-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div>
+          <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Subject</label>
+          <select 
+            value={subjectId} 
+            onChange={e => setSubjectId(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          >
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Exam Type</label>
+          <select 
+            value={examType} 
+            onChange={e => setExamType(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          >
+            <option value="internal_1">Internal 1</option>
+            <option value="internal_2">Internal 2</option>
+            <option value="midterm">Midterm</option>
+            <option value="final">Final</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Max Marks</label>
+          <input 
+            type="number" 
+            value={maxMarks} 
+            onChange={e => setMaxMarks(Number(e.target.value))}
+            className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {students.length === 0 ? (
+          <EmptyState 
+            icon={Users} 
+            title="No students enrolled" 
+            description="There are currently no students enrolled in this subject." 
+            className="py-8 bg-transparent shadow-none border-0"
+          />
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-[hsl(var(--border)/0.5)]">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-[hsl(var(--muted)/0.5)] border-b border-[hsl(var(--border)/0.5)] text-[hsl(var(--muted-foreground))]">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Student</th>
+                  <th className="px-4 py-3 font-medium text-right w-32">Marks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((student: any) => (
+                  <tr key={student.id} className="border-b border-[hsl(var(--border)/0.3)] last:border-0 bg-[hsl(var(--background))]">
+                    <td className="px-4 py-3 font-medium flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center text-[10px]">
+                        {student.full_name.charAt(0)}
+                      </div>
+                      {student.full_name}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <input 
+                        type="number" 
+                        value={marks[student.id] || ''}
+                        onChange={e => setMarks(prev => ({ ...prev, [student.id]: e.target.value }))}
+                        className="w-full px-2 py-1.5 rounded-lg bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] text-sm focus:outline-none focus:border-blue-500 text-right"
+                        placeholder={`/${maxMarks}`}
+                        max={maxMarks}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {students.length > 0 && (
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="mt-6 w-full py-2.5 rounded-xl gradient-primary text-white font-medium text-sm flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Upload Marks'}
+        </button>
+      )}
+    </div>
+  )
+}
