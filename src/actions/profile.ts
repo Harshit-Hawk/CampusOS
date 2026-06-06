@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 
 export async function updateProfile(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -38,7 +38,7 @@ export async function updateProfile(formData: FormData) {
 }
 
 export async function uploadAvatar(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -76,7 +76,7 @@ export async function uploadAvatar(formData: FormData) {
 }
 
 export async function fetchProfile(roll_no: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -88,7 +88,7 @@ export async function fetchProfile(roll_no: string) {
 }
 
 export async function fetchUserBadges(userId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data, error } = await supabase
     .from('user_badges')
     .select('*, badges(*)')
@@ -99,7 +99,7 @@ export async function fetchUserBadges(userId: string) {
 }
 
 export async function fetchUserStats(userId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
 
   const [posts, clubs, events] = await Promise.all([
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', userId),

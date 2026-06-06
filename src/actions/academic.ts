@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 // --- ADMIN: Departments & Subjects ---
 
 export async function fetchDepartments() {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data, error } = await supabase
     .from('departments')
     .select('*')
@@ -15,14 +15,14 @@ export async function fetchDepartments() {
 }
 
 export async function createDepartment(name: string, code: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { error } = await supabase.from('departments').insert({ name, code })
   if (error) return { error: error.message }
   return { success: true }
 }
 
 export async function fetchSubjects() {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data, error } = await supabase
     .from('subjects')
     .select('*, departments(*)')
@@ -32,28 +32,28 @@ export async function fetchSubjects() {
 }
 
 export async function createSubject(data: any) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { error } = await supabase.from('subjects').insert(data)
   if (error) return { error: error.message }
   return { success: true }
 }
 
 export async function assignFaculty(facultyId: string, subjectId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { error } = await supabase.from('faculty_subjects').insert({ faculty_id: facultyId, subject_id: subjectId })
   if (error) return { error: error.message }
   return { success: true }
 }
 
 export async function enrollStudent(studentId: string, subjectId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { error } = await supabase.from('student_subjects').insert({ student_id: studentId, subject_id: subjectId })
   if (error) return { error: error.message }
   return { success: true }
 }
 
 export async function createTimetable(data: { subject_id: string, day_of_week: number, start_time: string, end_time: string, room: string }) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { error } = await supabase.from('timetables').insert(data)
   if (error) return { error: error.message }
   return { success: true }
@@ -62,7 +62,7 @@ export async function createTimetable(data: { subject_id: string, day_of_week: n
 // --- ADMIN: Batches & Auto-Assignment ---
 
 export async function fetchBatches() {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data, error } = await supabase
     .from('student_batches')
     .select('*, departments(*)')
@@ -72,14 +72,14 @@ export async function fetchBatches() {
 }
 
 export async function createBatch(data: { name: string, department_id: string, roll_no_pattern: string, current_semester: number }) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { error } = await supabase.from('student_batches').insert(data)
   if (error) return { error: error.message }
   return { success: true }
 }
 
 export async function autoAssignBatchSubjects(batchId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   
   // 1. Fetch batch details
   const { data: batch, error: batchErr } = await supabase
@@ -131,7 +131,7 @@ export async function autoAssignBatchSubjects(batchId: string) {
 }
 
 export async function enrollBatchToSubject(batchId: string, subjectId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   
   // 1. Fetch batch details
   const { data: batch, error: batchErr } = await supabase
@@ -169,7 +169,7 @@ export async function enrollBatchToSubject(batchId: string, subjectId: string) {
 // --- FACULTY / TIMETABLE ---
 
 export async function fetchTimetable(subjectIds: string[]) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   if (!subjectIds.length) return { timetable: [] }
   const { data, error } = await supabase
     .from('timetables')
@@ -181,7 +181,7 @@ export async function fetchTimetable(subjectIds: string[]) {
 }
 
 export async function fetchFacultySubjects(facultyId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data, error } = await supabase
     .from('faculty_subjects')
     .select('*, subjects(*)')
@@ -191,7 +191,7 @@ export async function fetchFacultySubjects(facultyId: string) {
 }
 
 export async function fetchStudentSubjects(studentId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data, error } = await supabase
     .from('student_subjects')
     .select('*, subjects(*)')
@@ -201,7 +201,7 @@ export async function fetchStudentSubjects(studentId: string) {
 }
 
 export async function fetchStudentsBySubject(subjectId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data, error } = await supabase
     .from('student_subjects')
     .select('profiles(*)')
@@ -213,7 +213,7 @@ export async function fetchStudentsBySubject(subjectId: string) {
 // --- ATTENDANCE ---
 
 export async function markAttendance(subjectId: string, date: string, records: { student_id: string, status: string }[]) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -232,7 +232,7 @@ export async function markAttendance(subjectId: string, date: string, records: {
 }
 
 export async function fetchStudentAttendance(studentId: string, subjectId?: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   let query = supabase.from('attendance_records').select('*, subjects(*)').eq('student_id', studentId)
   if (subjectId) query = query.eq('subject_id', subjectId)
   
@@ -242,7 +242,7 @@ export async function fetchStudentAttendance(studentId: string, subjectId?: stri
 }
 
 export async function fetchSubjectAttendance(subjectId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data, error } = await supabase
     .from('attendance_records')
     .select('*, profiles(*)')
@@ -254,7 +254,7 @@ export async function fetchSubjectAttendance(subjectId: string) {
 // --- ASSIGNMENTS ---
 
 export async function fetchAssignments(subjectIds: string[]) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   if (!subjectIds.length) return { assignments: [] }
   const { data, error } = await supabase
     .from('assignments')
@@ -266,7 +266,7 @@ export async function fetchAssignments(subjectIds: string[]) {
 }
 
 export async function createAssignment(data: { subject_id: string, title: string, description: string, due_date: string, max_marks: number }) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -281,7 +281,7 @@ export async function createAssignment(data: { subject_id: string, title: string
 // --- SUBMISSIONS ---
 
 export async function submitAssignment(assignmentId: string, fileUrl: string, content: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -297,7 +297,7 @@ export async function submitAssignment(assignmentId: string, fileUrl: string, co
 }
 
 export async function fetchSubmissions(assignmentId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data, error } = await supabase
     .from('assignment_submissions')
     .select('*, profiles(*)')
@@ -307,7 +307,7 @@ export async function fetchSubmissions(assignmentId: string) {
 }
 
 export async function gradeSubmission(submissionId: string, marks: number, feedback: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { error } = await supabase.from('assignment_submissions').update({
     marks_obtained: marks,
     feedback: feedback
@@ -320,7 +320,7 @@ export async function gradeSubmission(submissionId: string, marks: number, feedb
 // --- MARKS ---
 
 export async function fetchExamMarks(studentId: string) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data, error } = await supabase
     .from('exam_marks')
     .select('*, subjects(*)')
@@ -330,7 +330,7 @@ export async function fetchExamMarks(studentId: string) {
 }
 
 export async function uploadExamMarks(subjectId: string, examType: string, records: { student_id: string, marks_obtained: number, max_marks: number }[]) {
-  const supabase = await createClient() as any
+  const supabase = await createClient() as any as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 

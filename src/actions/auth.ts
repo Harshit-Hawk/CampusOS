@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 
 export async function signUp(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const headersList = await headers()
   const origin = headersList.get('origin')
 
@@ -38,7 +38,7 @@ export async function signUp(formData: FormData) {
 }
 
 export async function signIn(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
@@ -56,7 +56,7 @@ export async function signIn(formData: FormData) {
 }
 
 export async function getUserRole() {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -64,7 +64,7 @@ export async function getUserRole() {
 }
 
 export async function signInWithGoogle() {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const headersList = await headers()
   const origin = headersList.get('origin')
 
@@ -85,7 +85,7 @@ export async function signInWithGoogle() {
 }
 
 export async function signOut() {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   await supabase.auth.signOut()
   redirect('/login')
 }

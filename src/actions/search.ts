@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function globalSearch(query: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
 
   // Search posts
   const { data: posts } = await supabase
@@ -36,7 +36,7 @@ export async function globalSearch(query: string) {
 }
 
 export async function getTrendingHashtags() {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data, error } = await supabase
     .from('hashtags')
     .select('*')
@@ -48,7 +48,7 @@ export async function getTrendingHashtags() {
 }
 
 export async function toggleSavePost(postId: string, currentSaved: boolean) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -65,7 +65,7 @@ export async function toggleSavePost(postId: string, currentSaved: boolean) {
 }
 
 export async function extractAndSaveHashtags(postId: string, content: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   
   // Extract hashtags
   const hashtags = content.match(/#[a-z0-9_]+/gi)

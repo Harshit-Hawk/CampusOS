@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 
 export async function getPlatformAnalytics() {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -26,7 +26,7 @@ export async function getPlatformAnalytics() {
 }
 
 export async function getClubAnalytics(clubId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   
   const { data: club } = await supabase.from('clubs').select('member_count').eq('id', clubId).single()
   const { data: events } = await supabase.from('events').select('registered_count').eq('club_id', clubId)

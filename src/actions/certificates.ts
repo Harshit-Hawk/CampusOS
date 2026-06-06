@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 
 export async function issueCertificate(eventId: string, userId: string, title: string, description: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -43,7 +43,7 @@ export async function issueCertificate(eventId: string, userId: string, title: s
 }
 
 export async function verifyCertificate(certificateId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
 
   const { data, error } = await supabase
     .from('certificates')
@@ -56,7 +56,7 @@ export async function verifyCertificate(certificateId: string) {
 }
 
 export async function fetchEventCertificates(eventId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
 
   const { data, error } = await supabase
     .from('certificates')

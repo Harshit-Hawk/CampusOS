@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 // Core XP increment RPC is defined in 001_initial_schema.sql
 export async function awardXP(userId: string, amount: number, reason: string, sourceType: string, sourceId?: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   await supabase.rpc('increment_xp', {
     target_user_id: userId,
     xp_amount: amount,
@@ -15,7 +15,7 @@ export async function awardXP(userId: string, amount: number, reason: string, so
 }
 
 export async function fetchXPHistory(userId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data, error } = await supabase
     .from('xp_transactions')
     .select('*')
@@ -28,7 +28,7 @@ export async function fetchXPHistory(userId: string) {
 }
 
 export async function getGamificationProfile(roll_no: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   
   // Get profile
   const { data: profile, error: profileError } = await supabase
@@ -60,7 +60,7 @@ export async function getGamificationProfile(roll_no: string) {
 }
 
 export async function getWalletTransactions() {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 

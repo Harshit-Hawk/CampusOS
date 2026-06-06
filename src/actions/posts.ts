@@ -6,7 +6,7 @@ import { POSTS_PER_PAGE, XP_REWARDS } from '@/lib/constants'
 import { extractAndSaveHashtags } from './search'
 
 export async function createPost(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -44,7 +44,7 @@ export async function createPost(formData: FormData) {
 }
 
 export async function fetchPosts(cursor?: string, category?: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   
   let userRole = 'user'
@@ -105,7 +105,7 @@ export async function fetchPosts(cursor?: string, category?: string) {
 }
 
 export async function likePost(postId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -141,7 +141,7 @@ export async function likePost(postId: string) {
 }
 
 export async function unlikePost(postId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -156,7 +156,7 @@ export async function unlikePost(postId: string) {
 }
 
 export async function addComment(postId: string, content: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
@@ -181,7 +181,7 @@ export async function addComment(postId: string, content: string) {
 }
 
 export async function fetchComments(postId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data, error } = await supabase
     .from('post_comments')
     .select('*, profiles(*)')
@@ -193,14 +193,14 @@ export async function fetchComments(postId: string) {
 }
 
 export async function deletePost(postId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { error } = await supabase.from('posts').delete().eq('id', postId)
   if (error) return { error: error.message }
   return { success: true }
 }
 
 export async function deleteComment(commentId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { error } = await supabase.from('post_comments').delete().eq('id', commentId)
   if (error) return { error: error.message }
   return { success: true }

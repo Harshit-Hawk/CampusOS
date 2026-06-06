@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 
 async function verifyAdmin() {
-  const supabase = await createClient()
+  const supabase = await createClient() as any as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -14,7 +14,7 @@ export async function getDashboardStats() {
   const isAdmin = await verifyAdmin()
   if (!isAdmin) throw new Error('Unauthorized')
 
-  const supabase = await createClient()
+  const supabase = await createClient() as any as any
 
   const [users, clubs, events, posts] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
@@ -35,7 +35,7 @@ export async function fetchAllUsers(search?: string) {
   const isAdmin = await verifyAdmin()
   if (!isAdmin) return { error: 'Unauthorized', users: [] }
 
-  const supabase = await createClient()
+  const supabase = await createClient() as any as any
 
   let query = supabase
     .from('profiles')
@@ -56,7 +56,7 @@ export async function updateUserRole(userId: string, role: string) {
   const isAdmin = await verifyAdmin()
   if (!isAdmin) return { error: 'Unauthorized' }
 
-  const supabase = await createClient()
+  const supabase = await createClient() as any as any
   const { error } = await (supabase.from('profiles') as any)
     .update({ role })
     .eq('id', userId)
@@ -69,7 +69,7 @@ export async function assignClubLeader(userId: string, clubId: string) {
   const isAdmin = await verifyAdmin()
   if (!isAdmin) return { error: 'Unauthorized' }
 
-  const supabase = await createClient()
+  const supabase = await createClient() as any as any
 
   // Verify the target user is not already an admin
   const { data: targetProfile } = await supabase.from('profiles').select('role').eq('id', userId).single()
@@ -125,7 +125,7 @@ export async function deleteClubAdmin(clubId: string) {
   const isAdmin = await verifyAdmin()
   if (!isAdmin) return { error: 'Unauthorized' }
 
-  const supabase = await createClient()
+  const supabase = await createClient() as any as any
   const { error } = await supabase.from('clubs').delete().eq('id', clubId)
   if (error) return { error: error.message }
   return { success: true }
@@ -135,7 +135,7 @@ export async function deleteEventAdmin(eventId: string) {
   const isAdmin = await verifyAdmin()
   if (!isAdmin) return { error: 'Unauthorized' }
 
-  const supabase = await createClient()
+  const supabase = await createClient() as any as any
   const { error } = await supabase.from('events').delete().eq('id', eventId)
   if (error) return { error: error.message }
   return { success: true }

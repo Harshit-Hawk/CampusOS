@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function fetchNotifications() {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { notifications: [] }
 
@@ -19,7 +19,7 @@ export async function fetchNotifications() {
 }
 
 export async function markAsRead(notificationId: string) {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { error } = await (supabase.from('notifications') as any)
     .update({ is_read: true })
     .eq('id', notificationId)
@@ -30,7 +30,7 @@ export async function markAsRead(notificationId: string) {
 }
 
 export async function markAllAsRead() {
-  const supabase = await createClient()
+  const supabase = await createClient() as any
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
