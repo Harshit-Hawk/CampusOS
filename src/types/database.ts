@@ -670,18 +670,21 @@ export type Database = {
           id: string
           registered_at: string | null
           user_id: string
+          team_id: string | null
         }
         Insert: {
           event_id: string
           id?: string
           registered_at?: string | null
           user_id: string
+          team_id?: string | null
         }
         Update: {
           event_id?: string
           id?: string
           registered_at?: string | null
           user_id?: string
+          team_id?: string | null
         }
         Relationships: [
           {
@@ -692,10 +695,59 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "event_registrations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "event_teams"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "event_registrations_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_teams: {
+        Row: {
+          code: string
+          created_at: string | null
+          creator_id: string
+          event_id: string
+          id: string
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          creator_id: string
+          event_id: string
+          id?: string
+          name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          creator_id?: string
+          event_id?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_teams_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_teams_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]
@@ -786,8 +838,11 @@ export type Database = {
           description: string
           end_date: string
           id: string
+          is_team_event: boolean | null
           location: string
           max_attendees: number | null
+          max_team_size: number | null
+          min_team_size: number | null
           organizer_id: string
           registered_count: number | null
           start_date: string
@@ -801,8 +856,11 @@ export type Database = {
           description: string
           end_date: string
           id?: string
+          is_team_event?: boolean | null
           location: string
           max_attendees?: number | null
+          max_team_size?: number | null
+          min_team_size?: number | null
           organizer_id: string
           registered_count?: number | null
           start_date: string
@@ -816,8 +874,11 @@ export type Database = {
           description?: string
           end_date?: string
           id?: string
+          is_team_event?: boolean | null
           location?: string
           max_attendees?: number | null
+          max_team_size?: number | null
+          min_team_size?: number | null
           organizer_id?: string
           registered_count?: number | null
           start_date?: string

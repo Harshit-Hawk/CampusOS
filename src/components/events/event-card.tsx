@@ -61,8 +61,13 @@ export function EventCard({ event, index }: EventCardProps) {
         </div>
 
         {event.clubs && (
-          <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-medium">
+          <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-medium mr-2">
             {(event.clubs as any).name}
+          </span>
+        )}
+        {event.is_team_event && (
+          <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-medium">
+            Team Event
           </span>
         )}
       </div>

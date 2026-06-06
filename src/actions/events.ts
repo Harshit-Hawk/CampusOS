@@ -94,10 +94,10 @@ export async function fetchEvent(eventId: string) {
   // Fetch attendees
   const { data: attendees } = await supabase
     .from('event_registrations')
-    .select('*, profiles(*)')
+    .select('*, profiles(*), event_teams(*)')
     .eq('event_id', eventId)
     .order('registered_at', { ascending: true })
-    .limit(20)
+    .limit(50)
 
   return { event, isRegistered, isBookmarked, isReminded, attendees: attendees || [] }
 }
@@ -129,6 +129,110 @@ export async function registerForEvent(eventId: string) {
   }
 
   return { success: true }
+}
+
+function generateTeamCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let result = ''
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
+export async function registerForTeamEvent(
+  eventId: string,
+  type: 'create' | 'join',
+  payload: { teamName?: string; teamCode?: string }
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Check event capacity
+  const { data: event } = await supabase
+    .from('events')
+    .select('max_attendees, registered_count, max_team_size')
+    .eq('id', eventId)
+    .single()
+
+  const ev = event as any
+  if (ev?.max_attendees && ev.registered_count >= ev.max_attendees) {
+    return { error: 'Event is full' }
+  }
+
+  let teamId: string
+
+  if (type === 'create') {
+    if (!payload.teamName) return { error: 'Team name is required' }
+    
+    // Generate unique code
+    let code = ''
+    let isUnique = false
+    while (!isUnique) {
+      code = generateTeamCode()
+      const { data: existingTeam } = await supabase
+        .from('event_teams')
+        .select('id')
+        .eq('code', code)
+        .maybeSingle()
+      if (!existingTeam) isUnique = true
+    }
+
+    const { data: newTeam, error: teamErr } = await supabase
+      .from('event_teams')
+      .insert({
+        event_id: eventId,
+        name: payload.teamName,
+        code,
+        creator_id: user.id
+      } as any)
+      .select('id')
+      .single()
+
+    if (teamErr) return { error: teamErr.message }
+    teamId = (newTeam as any).id
+
+  } else if (type === 'join') {
+    if (!payload.teamCode) return { error: 'Team code is required' }
+
+    const { data: team, error: teamErr } = await supabase
+      .from('event_teams')
+      .select('id, event_id')
+      .eq('code', payload.teamCode)
+      .single()
+
+    if (teamErr || !team) return { error: 'Invalid team code' }
+    if ((team as any).event_id !== eventId) return { error: 'This code belongs to a different event' }
+
+    teamId = (team as any).id
+
+    // Check team capacity
+    if (ev?.max_team_size) {
+      const { count } = await supabase
+        .from('event_registrations')
+        .select('*', { count: 'exact', head: true })
+        .eq('team_id', teamId)
+      
+      if (count && count >= ev.max_team_size) {
+        return { error: 'Team is already full' }
+      }
+    }
+  } else {
+    return { error: 'Invalid registration type' }
+  }
+
+  // Register user with team_id
+  const { error } = await supabase
+    .from('event_registrations')
+    .insert({ event_id: eventId, user_id: user.id, team_id: teamId } as any)
+
+  if (error) {
+    if (error.code === '23505') return { error: 'Already registered' }
+    return { error: error.message }
+  }
+
+  return { success: true, teamId }
 }
 
 export async function unregisterFromEvent(eventId: string) {
@@ -163,12 +267,38 @@ export async function createEvent(formData: FormData) {
   const end_date = formData.get('end_date') as string
   const club_id = formData.get('club_id') as string || null
   const max_attendees = parseInt(formData.get('max_attendees') as string) || null
+  const organizer_name = formData.get('organizer_name') as string || null
+  const banner = formData.get('banner') as File | null
+  
+  const is_team_event = formData.get('is_team_event') === 'on'
+  const min_team_size = parseInt(formData.get('min_team_size') as string) || 1
+  const max_team_size = parseInt(formData.get('max_team_size') as string) || null
+
+  let banner_url = null
+  if (banner && banner.size > 0) {
+    const fileExt = banner.name.split('.').pop()
+    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`
+    
+    const { error: uploadError } = await supabase.storage
+      .from('event_banners')
+      .upload(fileName, banner)
+      
+    if (uploadError) return { error: 'Failed to upload banner: ' + uploadError.message }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('event_banners')
+      .getPublicUrl(fileName)
+      
+    banner_url = publicUrl
+  }
 
   const { data, error } = await supabase
     .from('events')
     .insert({
       title, description, location, start_date, end_date,
       club_id, organizer_id: user.id, max_attendees,
+      organizer_name, banner_url,
+      is_team_event, min_team_size, max_team_size
     } as any)
     .select()
     .single()

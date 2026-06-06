@@ -20,7 +20,7 @@ export function DashboardShell({ profile, children }: DashboardShellProps) {
       <div className="lg:pl-[var(--sidebar-width)]">
         <div className="w-full transition-transform duration-300 xl:-translate-x-[calc(var(--sidebar-width)/2)]">
           <Topbar user={profile} setMobileMenuOpen={setMobileMenuOpen} />
-          <main className="p-4 lg:p-6 pb-24 lg:pb-6 min-h-[calc(100vh-var(--topbar-height))]">
+          <main className="p-4 lg:p-6 pb-24 lg:pb-6 min-h-[calc(100vh_-_var(--topbar-height))]">
             {children}
           </main>
         </div>

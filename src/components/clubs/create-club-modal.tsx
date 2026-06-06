@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { createClub } from '@/actions/clubs'
-import { Plus, X, Users, AlignLeft, Tag, Loader2 } from 'lucide-react'
+import { Plus, X, Users, AlignLeft, Tag, Loader2, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Modal } from '@/components/ui/modal'
@@ -52,7 +51,7 @@ export function CreateClubModal() {
                 name="name"
                 required
                 placeholder="e.g. Coding Club"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm"
               />
             </div>
           </div>
@@ -65,7 +64,7 @@ export function CreateClubModal() {
                 name="category"
                 required
                 defaultValue=""
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all appearance-none"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all appearance-none text-sm"
               >
                 <option value="" disabled>Select a category</option>
                 <option value="Academic">Academic</option>
@@ -75,6 +74,7 @@ export function CreateClubModal() {
                 <option value="Cultural">Cultural</option>
                 <option value="Other">Other</option>
               </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))] pointer-events-none" />
             </div>
           </div>
 
@@ -87,7 +87,7 @@ export function CreateClubModal() {
                 required
                 rows={4}
                 placeholder="What is your club about?"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all resize-none"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all resize-none text-sm"
               />
             </div>
           </div>

@@ -41,7 +41,7 @@ export function FeedFilters({ activeCategory, onCategoryChange }: FeedFiltersPro
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 top-[calc(100%+8px)] w-48 bg-card/95 backdrop-blur-md border border-[hsl(var(--border)/0.5)] rounded-2xl shadow-lg shadow-black/5 overflow-hidden z-50 py-1 animate-in fade-in slide-in-from-top-2">
+          <div className="absolute left-0 top-[calc(100%_+_8px)] w-48 bg-card/95 backdrop-blur-md border border-[hsl(var(--border)/0.5)] rounded-2xl shadow-lg shadow-black/5 overflow-hidden z-50 py-1 animate-in fade-in slide-in-from-top-2">
           <button
             onClick={() => {
               onCategoryChange('all')

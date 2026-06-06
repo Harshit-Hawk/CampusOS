@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { assignClubLeader } from '@/actions/admin'
 import { fetchClubs } from '@/actions/clubs'
-import { Plus, X, Users, Loader2 } from 'lucide-react'
+import { Plus, X, Users, Loader2, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Modal } from '@/components/ui/modal'
@@ -49,17 +48,20 @@ export function AssignClubLeaderModal({ userId, onClose, onSuccess }: AssignClub
       <form action={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Select a Club</label>
-          <select
-            name="club_id"
-            required
-            defaultValue=""
-            className="w-full px-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all appearance-none text-sm"
-          >
-            <option value="" disabled>Select a club...</option>
-            {clubs.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              name="club_id"
+              required
+              defaultValue=""
+              className="w-full pl-4 pr-10 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all appearance-none text-sm"
+            >
+              <option value="" disabled>Select a club...</option>
+              {clubs.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))] pointer-events-none" />
+          </div>
         </div>
 
         <div className="pt-4 flex justify-end gap-3 border-t border-[hsl(var(--border))] mt-4 pt-4">

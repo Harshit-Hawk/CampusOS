@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 
@@ -13,6 +14,13 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' }: ModalProps) {
+  const [mounted, setMounted] = useState(false)
+
+  // Wait until mounted on client to access document
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Close on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -29,7 +37,9 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' 
     return () => { document.body.style.overflow = 'unset' }
   }, [isOpen])
 
-  return (
+  if (!mounted) return null
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
@@ -62,12 +72,14 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' 
             </div>
 
             {/* Body */}
-            <div className="p-5 overflow-y-auto scrollbar-thin">
+            <div className="flex-1 overflow-y-auto p-5 scrollbar-thin max-h-[calc(90vh_-_80px)]">
               {children}
             </div>
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }
+

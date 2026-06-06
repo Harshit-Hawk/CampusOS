@@ -9,6 +9,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { fetchEvent, registerForEvent, unregisterFromEvent, volunteerForEvent, toggleEventBookmark, toggleEventReminder } from '@/actions/events'
+import { TeamRegistrationModal } from '@/components/events/team-registration-modal'
 
 export default function EventDetailPage() {
   const params = useParams()
@@ -32,6 +33,7 @@ export default function EventDetailPage() {
 
   // Modal State
   const [showQR, setShowQR] = useState(false)
+  const [showTeamModal, setShowTeamModal] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -58,6 +60,11 @@ export default function EventDetailPage() {
   }, [eventId, router])
 
   async function handleRegister() {
+    if (event.is_team_event) {
+      setShowTeamModal(true)
+      return
+    }
+
     setActionLoading(true)
     const result = await registerForEvent(eventId)
     if (result.error) toast.error(result.error)
@@ -68,6 +75,13 @@ export default function EventDetailPage() {
       setShowQR(true)
     }
     setActionLoading(false)
+  }
+
+  function handleTeamRegistrationSuccess() {
+    setIsRegistered(true)
+    setEvent((e: any) => e ? { ...e, registered_count: e.registered_count + 1 } : e)
+    setShowQR(true)
+    router.refresh()
   }
 
   async function handleUnregister() {
@@ -136,8 +150,20 @@ export default function EventDetailPage() {
   const capacityPercent = event.max_attendees ? (event.registered_count / event.max_attendees) * 100 : 0
   const isOrganizer = userId === event.organizer_id
 
+  const userRegistration = attendees.find(a => a.user_id === userId)
+  const userTeam = userRegistration?.event_teams
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {showTeamModal && (
+        <TeamRegistrationModal
+          eventId={eventId}
+          open={showTeamModal}
+          onClose={() => setShowTeamModal(false)}
+          onSuccess={handleTeamRegistrationSuccess}
+        />
+      )}
+
       <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
@@ -177,11 +203,15 @@ export default function EventDetailPage() {
           <div className="mt-4 flex items-center justify-between p-3 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold">
-                {event.profiles?.avatar_url ? <img src={event.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(event.profiles?.full_name || 'U')}
+                {event.organizer_name ? getInitials(event.organizer_name) : (event.profiles?.avatar_url ? <img src={event.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(event.profiles?.full_name || 'U'))}
               </div>
               <div>
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">Organized by</p>
-                <Link href={`/profile/${event.profiles?.username}`} className="text-sm font-medium hover:underline">{event.profiles?.full_name}</Link>
+                {event.organizer_name ? (
+                  <span className="text-sm font-medium">{event.organizer_name}</span>
+                ) : (
+                  <Link href={`/profile/${event.profiles?.username}`} className="text-sm font-medium hover:underline">{event.profiles?.full_name}</Link>
+                )}
               </div>
             </div>
           </div>
@@ -224,6 +254,42 @@ export default function EventDetailPage() {
           )}
         </div>
       </div>
+
+      {isRegistered && event.is_team_event && userTeam && (
+        <div className="glass rounded-2xl p-6 border-l-4 border-l-blue-500 animate-fade-in">
+          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-500" />
+            Your Team: {userTeam.name}
+          </h2>
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div>
+              <p className="text-sm text-[hsl(var(--muted-foreground))] mb-1">Share this code with your teammates to join:</p>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xl tracking-widest font-bold bg-[hsl(var(--muted))] px-4 py-2 rounded-xl border border-[hsl(var(--border))]">
+                  {userTeam.code}
+                </span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(userTeam.code)
+                    toast.success('Team code copied to clipboard!')
+                  }}
+                  className="text-sm text-blue-500 hover:underline"
+                >
+                  Copy Code
+                </button>
+              </div>
+            </div>
+            {event.max_team_size && (
+              <div className="text-right">
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">Team Capacity</p>
+                <p className="font-medium text-lg">
+                  {attendees.filter(a => a.team_id === userTeam.id).length} / {event.max_team_size} Members
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in stagger-2" style={{ opacity: 0 }}>
         <div className="md:col-span-2 space-y-6">
