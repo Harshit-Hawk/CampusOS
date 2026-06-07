@@ -282,12 +282,10 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
 
       {/* Quick Stats Row */}
       {!isAdminOrFaculty ? (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 animate-fade-in stagger-1" style={{ opacity: 0 }}>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 animate-fade-in stagger-1" style={{ opacity: 0 }}>
           <StatBox icon={Calendar} title="Events Joined" value={stats.eventsCount} iconColor="text-blue-500" bg="bg-blue-500/10" />
           <StatBox icon={Users} title="Clubs Joined" value={stats.clubsCount} iconColor="text-emerald-500" bg="bg-emerald-500/10" />
           <StatBox icon={Medal} title="Badges Earned" value={badges.length} iconColor="text-amber-500" bg="bg-amber-500/10" />
-          <StatBox icon={Newspaper} title="Posts Created" value={stats.postsCount} iconColor="text-sky-500" bg="bg-sky-500/10" />
-          <StatBox icon={Shield} title="Virtual Rep" value={reputation} iconColor="text-purple-500" bg="bg-purple-500/10" />
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5 animate-fade-in stagger-1" style={{ opacity: 0 }}>
