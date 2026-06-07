@@ -170,7 +170,7 @@ export default function AdminPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{user.full_name}</p>
-                        <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">{user.roll_no ? `Roll No: ${user.roll_no}` : `@${user.username}`} · {user.department || 'No dept'}</p>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">Roll No: {user.roll_no} · {user.department || 'No dept'}</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0">

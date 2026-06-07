@@ -210,7 +210,7 @@ export default function EventDetailPage() {
                 {event.organizer_name ? (
                   <span className="text-sm font-medium">{event.organizer_name}</span>
                 ) : (
-                  <Link href={`/profile/${event.profiles?.username}`} className="text-sm font-medium hover:underline">{event.profiles?.full_name}</Link>
+                  <Link href={`/profile/${event.profiles?.roll_no}`} className="text-sm font-medium hover:underline">{event.profiles?.full_name}</Link>
                 )}
               </div>
             </div>
@@ -293,7 +293,7 @@ export default function EventDetailPage() {
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-3">Team Members</p>
             <div className="flex flex-wrap gap-3">
               {attendees.filter(a => a.team_id === userTeam.id).map((member) => (
-                <Link key={member.id} href={`/profile/${member.profiles?.username}`} className="flex items-center gap-3 bg-[hsl(var(--background))] hover:bg-[hsl(var(--muted)/0.5)] transition-colors px-3 py-2 rounded-xl border border-[hsl(var(--border)/0.5)]">
+                <Link key={member.id} href={`/profile/${member.profiles?.roll_no}`} className="flex items-center gap-3 bg-[hsl(var(--background))] hover:bg-[hsl(var(--muted)/0.5)] transition-colors px-3 py-2 rounded-xl border border-[hsl(var(--border)/0.5)]">
                   <div className="w-8 h-8 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center overflow-hidden shrink-0">
                     {member.profiles?.avatar_url ? (
                       <img src={member.profiles.avatar_url} alt="" className="w-full h-full object-cover" />

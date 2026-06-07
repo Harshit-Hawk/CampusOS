@@ -90,7 +90,7 @@ export function PostCard({ post, onLikeToggle, onDelete, style, userRole }: Post
     <article className="glass rounded-2xl p-5 animate-fade-in card-hover" style={{ opacity: 0, ...style }}>
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
-        <Link href={`/profile/${post.profiles?.username}`} className="flex items-center gap-3 group">
+        <Link href={`/profile/${post.profiles?.roll_no}`} className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 ring-2 ring-transparent group-hover:ring-blue-500/30 transition-all">
             {post.profiles?.avatar_url ? (
               <img src={post.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />

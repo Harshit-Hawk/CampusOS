@@ -55,7 +55,7 @@ export default async function VerifyCertificatePage({ params }: { params: Promis
             <div className="glass rounded-xl p-5">
               <p className="text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider font-semibold mb-1">Awarded To</p>
               <p className="text-lg font-bold">{certificate.profiles?.full_name}</p>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">@{certificate.profiles?.username}</p>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">Roll No. {certificate.profiles?.roll_no}</p>
             </div>
             
             <div className="glass rounded-xl p-5">

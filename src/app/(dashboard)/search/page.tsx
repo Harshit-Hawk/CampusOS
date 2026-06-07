@@ -56,13 +56,13 @@ export default function SearchPage() {
           <h2 className="text-lg font-semibold mb-4 border-b border-[hsl(var(--border)/0.5)] pb-2">People</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {results.users.map((user: any) => (
-              <Link key={user.id} href={`/profile/${user.username}`} className="glass p-4 rounded-2xl hover:bg-[hsl(var(--muted)/0.5)] transition-colors flex items-center gap-4">
+              <Link key={user.id} href={`/profile/${user.roll_no}`} className="glass p-4 rounded-2xl hover:bg-[hsl(var(--muted)/0.5)] transition-colors flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-white font-semibold flex-shrink-0">
                   {user.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(user.full_name)}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-semibold truncate">{user.full_name}</p>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">@{user.username}</p>
+                  <p className="font-semibold text-[hsl(var(--foreground))]">{user.full_name}</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">Roll No: {user.roll_no}</p>
                 </div>
               </Link>
             ))}

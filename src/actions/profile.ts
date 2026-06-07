@@ -10,7 +10,10 @@ export async function updateProfile(formData: FormData) {
   const full_name = formData.get('full_name') as string
   const bio = formData.get('bio') as string
   const department = formData.get('department') as string
+  const course = formData.get('course') as string
+  const phone = formData.get('phone') as string
   const year = parseInt(formData.get('year') as string) || null
+  const semester = parseInt(formData.get('semester') as string) || null
   const skillsStr = formData.get('skills') as string
   const skills = skillsStr ? skillsStr.split(',').map(s => s.trim()).filter(Boolean) : []
   
@@ -19,7 +22,7 @@ export async function updateProfile(formData: FormData) {
   // First, get the current profile to check if roll_no_updated is true
   const { data: currentProfile } = await supabase.from('profiles').select('roll_no_updated, roll_no').eq('id', user.id).single()
   
-  const updates: any = { full_name, bio, department, year, skills, updated_at: new Date().toISOString() }
+  const updates: any = { full_name, bio, department, course, phone, year, semester, skills, updated_at: new Date().toISOString() }
   
   // Only update roll_no if they haven't updated it yet
   if (roll_no && currentProfile && !currentProfile.roll_no_updated && roll_no !== currentProfile.roll_no) {

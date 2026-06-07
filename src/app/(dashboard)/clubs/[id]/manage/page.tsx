@@ -171,7 +171,7 @@ export default function ManageClubPage() {
                             {app.profiles?.avatar_url ? <img src={app.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(app.profiles?.full_name || 'U')}
                           </div>
                           <div>
-                            <Link href={`/profile/${app.profiles?.username}`} className="font-medium hover:underline text-blue-400">{app.profiles?.full_name}</Link>
+                            <Link href={`/profile/${app.profiles?.roll_no}`} className="font-medium hover:underline text-blue-400">{app.profiles?.full_name}</Link>
                             <p className="text-xs text-[hsl(var(--muted-foreground))]">{formatRelativeTime(app.created_at)}</p>
                           </div>
                         </div>

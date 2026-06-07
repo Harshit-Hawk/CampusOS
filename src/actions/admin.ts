@@ -44,7 +44,7 @@ export async function fetchAllUsers(search?: string) {
     .limit(50)
 
   if (search) {
-    query = query.or(`full_name.ilike.%${search}%,username.ilike.%${search}%,department.ilike.%${search}%`)
+    query = query.or(`full_name.ilike.%${search}%,roll_no.ilike.%${search}%,department.ilike.%${search}%`)
   }
 
   const { data, error } = await query

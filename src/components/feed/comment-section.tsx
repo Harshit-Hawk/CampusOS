@@ -84,7 +84,7 @@ export function CommentSection({ postId }: CommentSectionProps) {
         <>
           {comments.map(comment => (
             <div key={comment.id} className="flex gap-2.5 animate-fade-in">
-              <Link href={`/profile/${comment.profiles?.username}`}>
+              <Link href={`/profile/${comment.profiles?.roll_no}`}>
                 <div className="w-7 h-7 rounded-full gradient-primary flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0">
                   {comment.profiles?.avatar_url ? (
                     <img src={comment.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />

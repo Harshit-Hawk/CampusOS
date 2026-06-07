@@ -18,7 +18,7 @@ export async function globalSearch(query: string) {
   const { data: users } = await supabase
     .from('profiles')
     .select('*')
-    .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+    .or(`full_name.ilike.%${query}%,roll_no.ilike.%${query}%`)
     .limit(5)
 
   // Search clubs

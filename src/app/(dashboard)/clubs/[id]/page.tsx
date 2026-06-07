@@ -280,7 +280,7 @@ export default function ClubDetailPage() {
           <div className="glass rounded-2xl p-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {members.map((m: any) => (
-                <Link key={m.id} href={`/profile/${m.profiles?.username}`} className="flex items-center gap-3 p-3 rounded-xl bg-[hsl(var(--muted)/0.5)] hover:bg-[hsl(var(--muted))] transition-colors border border-[hsl(var(--border)/0.3)]">
+                <Link key={m.id} href={`/profile/${m.profiles?.roll_no}`} className="flex items-center gap-3 p-3 rounded-xl bg-[hsl(var(--muted)/0.5)] hover:bg-[hsl(var(--muted))] transition-colors border border-[hsl(var(--border)/0.3)]">
                   <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
                     {m.profiles?.avatar_url ? <img src={m.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(m.profiles?.full_name || 'U')}
                   </div>
@@ -364,7 +364,7 @@ export default function ClubDetailPage() {
                           {app.profiles?.avatar_url ? <img src={app.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(app.profiles?.full_name || 'U')}
                         </div>
                         <div>
-                          <Link href={`/profile/${app.profiles?.username}`} className="text-sm font-medium hover:underline">{app.profiles?.full_name}</Link>
+                          <Link href={`/profile/${app.profiles?.roll_no}`} className="text-sm font-medium hover:underline">{app.profiles?.full_name}</Link>
                           <p className="text-xs text-[hsl(var(--muted-foreground))]">{formatRelativeTime(app.created_at)}</p>
                         </div>
                       </div>
