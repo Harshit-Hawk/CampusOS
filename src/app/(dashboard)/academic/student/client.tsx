@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { submitAssignment } from '@/actions/academic'
-import { BookOpen, Calendar, CheckCircle, Clock, AlertTriangle, FileText, UploadCloud, ChevronRight, Check, ArrowLeft, CheckCircle2, XCircle } from 'lucide-react'
+import { fetchSubjectResources } from '@/actions/academic-resources'
+import { BookOpen, Calendar, CheckCircle, Clock, AlertTriangle, FileText, UploadCloud, ChevronRight, Check, ArrowLeft, CheckCircle2, XCircle, Loader2, Download, Link as LinkIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { EmptyState } from '@/components/ui/empty-state'
 
-type Tab = 'timetable' | 'attendance' | 'assignments' | 'results'
+type Tab = 'timetable' | 'attendance' | 'assignments' | 'results' | 'subjects'
 
 export function StudentAcademicClient({ subjects, timetable, attendance, assignments, marks, submissions }: any) {
   const [activeTab, setActiveTab] = useState<Tab>('timetable')
@@ -39,6 +40,7 @@ export function StudentAcademicClient({ subjects, timetable, attendance, assignm
         {[
           { id: 'timetable', label: 'Timetable', icon: Calendar },
           { id: 'attendance', label: 'Attendance', icon: CheckCircle },
+          { id: 'subjects', label: 'Subjects', icon: BookOpen },
           { id: 'assignments', label: 'Assignments', icon: FileText },
           { id: 'results', label: 'Results', icon: BookOpen },
         ].map((tab) => (
@@ -227,6 +229,124 @@ export function StudentAcademicClient({ subjects, timetable, attendance, assignm
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'subjects' && <SubjectsTab subjects={subjects} />}
+    </div>
+  )
+}
+
+function SubjectsTab({ subjects }: { subjects: any[] }) {
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
+  
+  if (selectedSubjectId) {
+    const subject = subjects.find(s => s.id === selectedSubjectId)
+    return <SubjectResourcesView subject={subject} onBack={() => setSelectedSubjectId(null)} />
+  }
+
+  if (subjects.length === 0) {
+     return <EmptyState icon={BookOpen} title="Not enrolled" description="You are not enrolled in any subjects." />
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {subjects.map(sub => (
+        <button 
+          key={sub.id} 
+          onClick={() => setSelectedSubjectId(sub.id)}
+          className="glass rounded-2xl p-5 text-left card-hover focus:outline-none focus:ring-2 focus:ring-blue-500/50 flex flex-col group" 
+        >
+          <div className="p-3 rounded-xl bg-blue-500/10 text-blue-500 w-fit mb-4">
+            <BookOpen className="w-6 h-6" />
+          </div>
+          <h3 className="font-semibold text-lg line-clamp-1">{sub.name}</h3>
+          <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">{sub.code}</p>
+          <div className="mt-auto pt-4 border-t border-[hsl(var(--border)/0.5)] flex items-center justify-between w-full text-xs font-bold text-blue-500">
+            View Study Materials <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+          </div>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function SubjectResourcesView({ subject, onBack }: { subject: any, onBack: () => void }) {
+  const [resources, setResources] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      if (subject?.id) {
+        setLoading(true)
+        const data = await fetchSubjectResources(subject.id)
+        setResources(data)
+        setLoading(false)
+      }
+    }
+    load()
+  }, [subject])
+
+  if (!subject) return null
+
+  return (
+    <div className="animate-fade-in space-y-6">
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={onBack} className="p-2 rounded-xl bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)] transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div>
+          <h2 className="text-xl font-bold">{subject.name}</h2>
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">{subject.code} · Study Materials</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /></div>
+      ) : resources.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title="No resources found"
+          description="Faculty hasn't uploaded any study materials for this subject yet."
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {resources.map(resource => (
+            <div key={resource.id} className="glass rounded-2xl p-5 flex flex-col hover:border-[hsl(var(--ring)/0.5)] transition-colors group">
+              <div className="flex items-start gap-3 mb-3">
+                <div className={`p-2.5 rounded-xl ${resource.resource_type === 'pdf' ? 'bg-red-500/10 text-red-500' : resource.resource_type === 'docx' ? 'bg-blue-500/10 text-blue-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                  {resource.resource_type === 'link' ? <LinkIcon className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base line-clamp-1">{resource.title}</h3>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-[10px] uppercase font-bold text-[hsl(var(--muted-foreground))]">{resource.resource_type}</span>
+                    <span className="text-[10px] text-[hsl(var(--muted-foreground))]">•</span>
+                    <span className="text-[10px] text-[hsl(var(--muted-foreground))] truncate max-w-[120px]">By {resource.profiles?.full_name?.split(' ')[0]}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {resource.description && (
+                <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 mb-4 flex-1">
+                  {resource.description}
+                </p>
+              )}
+              
+              <div className="mt-auto pt-4">
+                {resource.file_url && (
+                  <a href={resource.file_url} target="_blank" rel="noreferrer" className="w-full py-2 bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors hover:bg-blue-500 hover:text-white shadow-sm">
+                    <Download className="w-4 h-4" /> Download File
+                  </a>
+                )}
+                {resource.external_link && (
+                  <a href={resource.external_link} target="_blank" rel="noreferrer" className="w-full py-2 bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors hover:bg-emerald-500 hover:text-white shadow-sm">
+                    <LinkIcon className="w-4 h-4" /> Open Link
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

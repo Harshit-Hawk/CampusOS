@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { markAttendance, createAssignment, gradeSubmission, uploadExamMarks, fetchSubjectAttendance, fetchSubjectAttendanceReport } from '@/actions/academic'
-import { CheckCircle, Users, BookOpen, Clock, FileText, ChevronDown, Check, X, Loader2, Download } from 'lucide-react'
+import { fetchSubjectResources, createSubjectResource, deleteSubjectResource } from '@/actions/academic-resources'
+import { CheckCircle, Users, BookOpen, Clock, FileText, ChevronDown, Check, X, Loader2, Download, Link as LinkIcon, File } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/ui/empty-state'
 
-type Tab = 'attendance' | 'assignments' | 'marks'
+type Tab = 'attendance' | 'assignments' | 'marks' | 'resources'
 
 export function FacultyAcademicClient({ subjects, timetable, assignments, submissions, subjectStudents }: any) {
   const [activeTab, setActiveTab] = useState<Tab>('attendance')
@@ -30,6 +31,7 @@ export function FacultyAcademicClient({ subjects, timetable, assignments, submis
           { id: 'attendance', label: 'Take Attendance', icon: CheckCircle },
           { id: 'assignments', label: 'Assignments', icon: FileText },
           { id: 'marks', label: 'Upload Marks', icon: BookOpen },
+          { id: 'resources', label: 'Study Resources', icon: File },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -50,6 +52,7 @@ export function FacultyAcademicClient({ subjects, timetable, assignments, submis
       {activeTab === 'attendance' && <AttendanceTab subjects={subjects} subjectStudents={subjectStudents} />}
       {activeTab === 'assignments' && <AssignmentsTab subjects={subjects} assignments={assignments} submissions={submissions} />}
       {activeTab === 'marks' && <MarksTab subjects={subjects} subjectStudents={subjectStudents} />}
+      {activeTab === 'resources' && <ResourcesTab subjects={subjects} />}
     </div>
   )
 }
@@ -546,6 +549,224 @@ function MarksTab({ subjects, subjectStudents }: { subjects: any[], subjectStude
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Upload Marks'}
         </button>
+      )}
+    </div>
+  )
+}
+
+function ResourcesTab({ subjects }: { subjects: any[] }) {
+  const [subjectId, setSubjectId] = useState(subjects[0]?.id)
+  const [resources, setResources] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [showUpload, setShowUpload] = useState(false)
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    resourceType: 'pdf',
+    externalLink: ''
+  })
+  const [file, setFile] = useState<File | null>(null)
+
+  useEffect(() => {
+    if (subjectId) {
+      loadResources()
+    }
+  }, [subjectId])
+
+  async function loadResources() {
+    setLoading(true)
+    const data = await fetchSubjectResources(subjectId)
+    setResources(data)
+    setLoading(false)
+  }
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setUploading(true)
+
+    const fd = new FormData()
+    fd.append('subjectId', subjectId)
+    fd.append('title', formData.title)
+    fd.append('description', formData.description)
+    fd.append('resourceType', formData.resourceType)
+    if (file) fd.append('file', file)
+    if (formData.externalLink) fd.append('externalLink', formData.externalLink)
+
+    const res = await createSubjectResource(fd)
+    if (res.success) {
+      toast.success('Resource uploaded successfully!')
+      setShowUpload(false)
+      setFormData({ title: '', description: '', resourceType: 'pdf', externalLink: '' })
+      setFile(null)
+      loadResources()
+    } else {
+      toast.error(res.error || 'Failed to upload resource')
+    }
+    setUploading(false)
+  }
+
+  const handleDelete = async (id: string, fileUrl: string | null) => {
+    if (!confirm('Are you sure you want to delete this resource?')) return
+    const res = await deleteSubjectResource(id, fileUrl)
+    if (res.success) {
+      toast.success('Resource deleted')
+      setResources(prev => prev.filter(r => r.id !== id))
+    } else {
+      toast.error(res.error || 'Failed to delete')
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="w-full sm:w-64 shrink-0">
+          <select
+            value={subjectId}
+            onChange={e => setSubjectId(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          >
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
+          </select>
+        </div>
+        <button
+          onClick={() => setShowUpload(!showUpload)}
+          className="px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 transition-colors shrink-0"
+        >
+          {showUpload ? 'Cancel' : 'Upload Resource'}
+        </button>
+      </div>
+
+      {showUpload && (
+        <form onSubmit={handleUpload} className="glass rounded-2xl p-6 space-y-4 animate-fade-in">
+          <div>
+            <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Resource Type</label>
+            <div className="flex gap-2">
+              {['pdf', 'docx', 'link'].map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, resourceType: type })}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-sm font-medium border capitalize",
+                    formData.resourceType === type ? "bg-blue-500 text-white border-blue-500" : "bg-[hsl(var(--background))] text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
+                  )}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Title</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={e => setFormData({ ...formData, title: e.target.value })}
+              required
+              placeholder="e.g. Chapter 1 Notes"
+              className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Description (Optional)</label>
+            <textarea
+              value={formData.description}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              rows={2}
+              className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+            />
+          </div>
+
+          {formData.resourceType === 'link' ? (
+            <div>
+              <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">External URL</label>
+              <input
+                type="url"
+                value={formData.externalLink}
+                onChange={e => setFormData({ ...formData, externalLink: e.target.value })}
+                required
+                placeholder="https://..."
+                className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Upload File</label>
+              <input
+                type="file"
+                accept={formData.resourceType === 'pdf' ? '.pdf' : '.docx'}
+                onChange={e => setFile(e.target.files?.[0] || null)}
+                required
+                className="w-full text-sm text-[hsl(var(--muted-foreground))] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-500 hover:file:bg-blue-500/20 cursor-pointer"
+              />
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={uploading}
+            className="w-full py-2.5 rounded-xl gradient-primary text-white font-medium text-sm flex items-center justify-center gap-2 shadow-md disabled:opacity-50 mt-4"
+          >
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Upload Material'}
+          </button>
+        </form>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /></div>
+      ) : resources.length === 0 ? (
+        <EmptyState
+          icon={File}
+          title="No study materials"
+          description="You haven't uploaded any resources for this subject yet."
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {resources.map(resource => (
+            <div key={resource.id} className="glass rounded-2xl p-4 flex flex-col">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className={`p-2 rounded-xl ${resource.resource_type === 'pdf' ? 'bg-red-500/10 text-red-500' : resource.resource_type === 'docx' ? 'bg-blue-500/10 text-blue-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                    {resource.resource_type === 'link' ? <LinkIcon className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm line-clamp-1">{resource.title}</h3>
+                    <p className="text-[10px] text-[hsl(var(--muted-foreground))] uppercase font-bold">{resource.resource_type}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => handleDelete(resource.id, resource.file_url)}
+                  className="p-1.5 text-[hsl(var(--muted-foreground))] hover:text-red-500 rounded-lg hover:bg-red-500/10 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              {resource.description && (
+                <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 mb-4 flex-1">
+                  {resource.description}
+                </p>
+              )}
+              
+              <div className="mt-auto pt-4 flex gap-2">
+                {resource.file_url && (
+                  <a href={resource.file_url} target="_blank" rel="noreferrer" className="flex-1 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                    <Download className="w-3.5 h-3.5" /> Download
+                  </a>
+                )}
+                {resource.external_link && (
+                  <a href={resource.external_link} target="_blank" rel="noreferrer" className="flex-1 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                    <LinkIcon className="w-3.5 h-3.5" /> Open Link
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
