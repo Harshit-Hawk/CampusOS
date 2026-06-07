@@ -57,6 +57,14 @@ export async function createPost(formData: FormData) {
     if (notifError) {
       console.error('Failed to broadcast notifications:', notifError)
     }
+
+    // Broadcast native Web Push notifications
+    const { broadcastNativePushNotification } = await import('./push')
+    await broadcastNativePushNotification(
+      `New Post by ${profile.full_name || 'Someone'}`,
+      content.length > 50 ? content.substring(0, 47) + '...' : content,
+      '/feed'
+    )
   }
 
   return { data }

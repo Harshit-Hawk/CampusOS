@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bell, Check, Info, AlertCircle, Heart, MessageSquare } from 'lucide-react'
+import { Bell, Heart, MessageSquare, Info, Check, AlertCircle, Smartphone } from 'lucide-react'
 import { fetchNotifications, markAsRead, markAllAsRead } from '@/actions/notifications'
+import { savePushSubscription } from '@/actions/push'
 import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime } from '@/lib/utils'
 import Link from 'next/link'
@@ -13,6 +14,13 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>('default')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPushPermission(Notification.permission)
+    }
+  }, [])
   const supabase = createClient()
 
   useEffect(() => {
@@ -71,6 +79,40 @@ export function NotificationBell() {
     }
   }
 
+  async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      toast.error('Push notifications are not supported in this browser.')
+      return
+    }
+
+    try {
+      const permission = await Notification.requestPermission()
+      setPushPermission(permission)
+      
+      if (permission === 'granted') {
+        const registration = await navigator.serviceWorker.register('/sw.js')
+        
+        // Wait for service worker to be ready
+        await navigator.serviceWorker.ready
+
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        })
+
+        const result = await savePushSubscription(JSON.parse(JSON.stringify(subscription)))
+        if (result?.error) {
+          toast.error('Failed to save push subscription.')
+        } else {
+          toast.success('Native push notifications enabled! 🎉')
+        }
+      }
+    } catch (err) {
+      console.error('Failed to subscribe to push:', err)
+      toast.error('Could not enable push notifications.')
+    }
+  }
+
   return (
     <div className="relative">
       <button 
@@ -107,6 +149,20 @@ export function NotificationBell() {
             </div>
             
             <div className="max-h-[400px] overflow-y-auto">
+              {pushPermission === 'default' && (
+                <div className="p-3 bg-blue-500/10 border-b border-blue-500/20 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm text-blue-400">
+                    <Smartphone className="w-4 h-4" />
+                    <span>Get native push notifications</span>
+                  </div>
+                  <button 
+                    onClick={subscribeToPush}
+                    className="text-xs bg-blue-500 text-white px-2 py-1 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap"
+                  >
+                    Enable
+                  </button>
+                </div>
+              )}
               {notifications.length > 0 ? (
                 notifications.map(n => (
                   <div 
