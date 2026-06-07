@@ -253,8 +253,11 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
 
         {/* Right Card: Rank */}
         {profile.role !== 'admin' && profile.role !== 'faculty' && (
-          <div className="glass rounded-3xl p-6 w-full lg:w-80 shrink-0 flex flex-col justify-center">
-            <p className="text-sm font-semibold text-[hsl(var(--muted-foreground))] mb-4">Your Rank</p>
+          <Link href="/ranks" className="glass rounded-3xl p-6 w-full lg:w-80 shrink-0 flex flex-col justify-center relative group hover:border-[hsl(var(--ring)/0.5)] transition-all overflow-hidden block">
+            <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0">
+              <ArrowRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
+            </div>
+            <p className="text-sm font-semibold text-[hsl(var(--muted-foreground))] mb-4 group-hover:text-[hsl(var(--foreground))] transition-colors">Your Rank</p>
             
             <div className="flex items-center gap-4 mb-4">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
@@ -276,7 +279,7 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
               </div>
               <p className="text-[10px] text-[hsl(var(--muted-foreground))] font-medium text-right">{xpPoints.toLocaleString()} / {nextLevelXP.toLocaleString()} XP</p>
             </div>
-          </div>
+          </Link>
         )}
       </div>
 
