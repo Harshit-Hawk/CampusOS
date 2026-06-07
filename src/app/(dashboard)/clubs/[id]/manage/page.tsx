@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchClub, fetchClubApplications, processApplication, fetchClubAnnouncements, postClubAnnouncement, fetchClubPositions, createClubPosition, promoteClubMember } from '@/actions/clubs'
+import { fetchClub, fetchClubApplications, processApplication, fetchClubAnnouncements, postClubAnnouncement, fetchClubPositions, createClubPosition, promoteClubMember, fetchClubAnalytics, removeClubMember } from '@/actions/clubs'
 import { getInitials, formatRelativeTime } from '@/lib/utils'
-import { ArrowLeft, Loader2, Users, ClipboardList, MessageSquare, Shield, Check, X, Briefcase } from 'lucide-react'
+import { ArrowLeft, Loader2, Users, ClipboardList, MessageSquare, Shield, Check, X, Briefcase, BarChart3, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -18,10 +18,11 @@ export default function ManageClubPage() {
   const [applications, setApplications] = useState<any[]>([])
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [positions, setPositions] = useState<any[]>([])
+  const [analytics, setAnalytics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
 
-  const [activeTab, setActiveTab] = useState<'members' | 'applications' | 'positions' | 'announcements'>('applications')
+  const [activeTab, setActiveTab] = useState<'members' | 'applications' | 'positions' | 'announcements' | 'analytics'>('applications')
 
   // Form states
   const [title, setTitle] = useState('')
@@ -48,15 +49,17 @@ export default function ManageClubPage() {
       setUserId(result.userId || null)
       
       // Fetch everything else
-      const [apps, anns, pos] = await Promise.all([
+      const [apps, anns, pos, stats] = await Promise.all([
         fetchClubApplications(clubId),
         fetchClubAnnouncements(clubId),
-        fetchClubPositions(clubId)
+        fetchClubPositions(clubId),
+        fetchClubAnalytics(clubId)
       ])
 
       setApplications(apps.applications || [])
       setAnnouncements(anns.announcements || [])
       setPositions(pos.positions || [])
+      setAnalytics(stats.analytics || null)
       
       setLoading(false)
     }
@@ -122,6 +125,16 @@ export default function ManageClubPage() {
     }
   }
 
+  async function handleRemove(targetUserId: string) {
+    if (!confirm('Are you sure you want to remove this member?')) return
+    const res = await removeClubMember(clubId, targetUserId)
+    if (res.error) toast.error(res.error)
+    else {
+      toast.success('Member removed')
+      setMembers(prev => prev.filter(m => m.user_id !== targetUserId))
+    }
+  }
+
   if (loading) return <div className="max-w-4xl mx-auto"><div className="glass rounded-2xl h-64 animate-pulse" /></div>
 
   return (
@@ -152,6 +165,9 @@ export default function ManageClubPage() {
           </button>
           <button onClick={() => setActiveTab('members')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'members' ? 'gradient-primary text-white shadow-md' : 'glass hover:bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))]'}`}>
             <Shield className="w-4 h-4" /> Leadership & Roles
+          </button>
+          <button onClick={() => setActiveTab('analytics')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'analytics' ? 'gradient-primary text-white shadow-md' : 'glass hover:bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))]'}`}>
+            <BarChart3 className="w-4 h-4" /> Analytics
           </button>
         </div>
 
@@ -282,24 +298,86 @@ export default function ManageClubPage() {
                       <p className="text-sm font-medium">{m.profiles?.full_name}</p>
                     </div>
                     {m.user_id !== userId && (
-                      <select
-                        value={m.role}
-                        onChange={(e) => handlePromote(m.user_id, e.target.value)}
-                        className="bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-lg text-xs py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize"
-                      >
-                        <option value="member">Member</option>
-                        <option value="core_team">Core Team</option>
-                        <option value="treasurer">Treasurer</option>
-                        <option value="secretary">Secretary</option>
-                        <option value="vice_president">Vice President</option>
-                        <option value="president">President</option>
-                      </select>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={m.role}
+                          onChange={(e) => handlePromote(m.user_id, e.target.value)}
+                          className="bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-lg text-xs py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize"
+                        >
+                          <option value="member">Member</option>
+                          <option value="core_team">Core Team</option>
+                          <option value="treasurer">Treasurer</option>
+                          <option value="secretary">Secretary</option>
+                          <option value="vice_president">Vice President</option>
+                          <option value="president">President</option>
+                        </select>
+                        <button onClick={() => handleRemove(m.user_id)} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title="Remove Member">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                     {m.user_id === userId && (
                       <span className="text-xs px-2 py-1 rounded-full bg-amber-500/10 text-amber-500 font-medium capitalize">{m.role.replace('_', ' ')} (You)</span>
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'analytics' && analytics && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="glass rounded-2xl p-6">
+                  <p className="text-sm text-[hsl(var(--muted-foreground))] mb-1 font-medium tracking-wide uppercase">Total Members</p>
+                  <p className="text-4xl font-black text-blue-500">{analytics.member_count}</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2">Currently active in club</p>
+                </div>
+                <div className="glass rounded-2xl p-6">
+                  <p className="text-sm text-[hsl(var(--muted-foreground))] mb-1 font-medium tracking-wide uppercase">Engagement</p>
+                  <p className="text-4xl font-black text-emerald-500">{analytics.engagement_score || 0}</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2">Interaction score</p>
+                </div>
+                <div className="glass rounded-2xl p-6">
+                  <p className="text-sm text-[hsl(var(--muted-foreground))] mb-1 font-medium tracking-wide uppercase">Activity</p>
+                  <p className="text-4xl font-black text-amber-500">{analytics.activity_score || 0}</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2">Event & Resource score</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="text-lg font-semibold mb-4">Application Funnel</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-[hsl(var(--muted-foreground))]">Total Applications</span>
+                      <span className="font-bold">{analytics.applications.total}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-[hsl(var(--muted-foreground))]">Approved</span>
+                      <span className="font-bold text-green-500">{analytics.applications.approved}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-[hsl(var(--muted-foreground))]">Pending</span>
+                      <span className="font-bold text-amber-500">{analytics.applications.pending}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-[hsl(var(--muted-foreground))]">Rejected</span>
+                      <span className="font-bold text-red-500">{analytics.applications.rejected}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="text-lg font-semibold mb-4">Role Distribution</h3>
+                  <div className="space-y-4">
+                    {Object.entries(analytics.roles).map(([role, count]: any) => (
+                      <div key={role} className="flex items-center justify-between">
+                        <span className="text-sm capitalize text-[hsl(var(--muted-foreground))]">{role.replace('_', ' ')}</span>
+                        <span className="font-bold">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}

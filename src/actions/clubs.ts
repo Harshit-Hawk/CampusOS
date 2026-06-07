@@ -331,3 +331,55 @@ export async function promoteClubMember(clubId: string, targetUserId: string, ne
 
   return { success: true }
 }
+
+export async function removeClubMember(clubId: string, targetUserId: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from('club_members')
+    .delete()
+    .eq('club_id', clubId)
+    .eq('user_id', targetUserId)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function fetchClubAnalytics(clubId: string) {
+  const supabase = await createClient()
+  
+  const { data: club } = await supabase
+    .from('clubs')
+    .select('activity_score, engagement_score, growth_score, member_count')
+    .eq('id', clubId)
+    .single()
+
+  const { data: members } = await supabase
+    .from('club_members')
+    .select('role')
+    .eq('club_id', clubId)
+
+  const { data: applications } = await supabase
+    .from('club_applications')
+    .select('status')
+    .eq('club_id', clubId)
+
+  const rolesCount = (members || []).reduce((acc: any, curr: any) => {
+    acc[curr.role] = (acc[curr.role] || 0) + 1
+    return acc
+  }, {})
+
+  const appStats = (applications || []).reduce((acc: any, curr: any) => {
+    acc[curr.status] = (acc[curr.status] || 0) + 1
+    acc.total = (acc.total || 0) + 1
+    return acc
+  }, { total: 0, pending: 0, approved: 0, rejected: 0, interviewing: 0 })
+
+  return {
+    analytics: {
+      ...club,
+      roles: rolesCount,
+      applications: appStats
+    }
+  }
+}
