@@ -53,7 +53,10 @@ export async function createPost(formData: FormData) {
     
     // Batch insert notifications
     // Supabase allows inserting up to 1000 rows at once safely.
-    await supabase.from('notifications').insert(notifications)
+    const { error: notifError } = await supabase.from('notifications').insert(notifications)
+    if (notifError) {
+      console.error('Failed to broadcast notifications:', notifError)
+    }
   }
 
   return { data }
