@@ -257,7 +257,7 @@ export async function fetchClubAnnouncements(clubId: string) {
   const supabase = await createClient()
   const { data, error } = await (supabase as any)
     .from('club_announcements')
-    .select('*, profiles(*)')
+    .select('*, profiles(*), clubs(name, logo_url)')
     .eq('club_id', clubId)
     .order('created_at', { ascending: false })
   
@@ -265,17 +265,76 @@ export async function fetchClubAnnouncements(clubId: string) {
   return { announcements: data || [] }
 }
 
-export async function postClubAnnouncement(clubId: string, title: string, content: string) {
+export async function postClubAnnouncement(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
+
+  const clubId = formData.get('clubId') as string
+  const title = formData.get('title') as string
+  const content = formData.get('content') as string
+  const file = formData.get('attachment') as File | null
+
+  let attachment_url = null
+  let attachment_type = null
+
+  if (file && file.size > 0) {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${clubId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+    
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('announcement-attachments')
+      .upload(fileName, file)
+
+    if (uploadError) return { error: uploadError.message }
+    
+    const { data: publicUrlData } = supabase.storage
+      .from('announcement-attachments')
+      .getPublicUrl(fileName)
+      
+    attachment_url = publicUrlData.publicUrl
+    attachment_type = file.type.startsWith('image/') ? 'image' : 'pdf'
+  }
 
   const { error } = await (supabase as any).from('club_announcements').insert({
     club_id: clubId,
     author_id: user.id,
     title,
-    content
+    content,
+    attachment_url,
+    attachment_type
   })
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function deleteClubAnnouncement(announcementId: string) {
+  const supabase = await createClient()
+  
+  const { data: announcement } = await (supabase as any)
+    .from('club_announcements')
+    .select('attachment_url')
+    .eq('id', announcementId)
+    .single()
+
+  if (announcement?.attachment_url) {
+    try {
+      const urlObj = new URL(announcement.attachment_url)
+      const pathParts = urlObj.pathname.split('/announcement-attachments/')
+      if (pathParts.length > 1) {
+        const filePath = pathParts[1]
+        await supabase.storage.from('announcement-attachments').remove([filePath])
+      }
+    } catch (e) {
+      // Ignore URL parsing errors
+    }
+  }
+
+  const { error } = await (supabase as any)
+    .from('club_announcements')
+    .delete()
+    .eq('id', announcementId)
 
   if (error) return { error: error.message }
   return { success: true }

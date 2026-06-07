@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchClub, fetchClubApplications, processApplication, fetchClubAnnouncements, postClubAnnouncement, fetchClubPositions, createClubPosition, promoteClubMember, fetchClubAnalytics, removeClubMember } from '@/actions/clubs'
+import { fetchClub, fetchClubApplications, processApplication, fetchClubAnnouncements, postClubAnnouncement, fetchClubPositions, createClubPosition, promoteClubMember, fetchClubAnalytics, removeClubMember, deleteClubAnnouncement } from '@/actions/clubs'
 import { getInitials, formatRelativeTime } from '@/lib/utils'
 import { ArrowLeft, Loader2, Users, ClipboardList, MessageSquare, Shield, Check, X, Briefcase, BarChart3, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -27,6 +27,7 @@ export default function ManageClubPage() {
   // Form states
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [attachment, setAttachment] = useState<File | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
@@ -92,16 +93,36 @@ export default function ManageClubPage() {
     e.preventDefault()
     if (!title || !content) return
     setActionLoading(true)
-    const res = await postClubAnnouncement(clubId, title, content)
+
+    const formData = new FormData()
+    formData.append('clubId', clubId)
+    formData.append('title', title)
+    formData.append('content', content)
+    if (attachment) {
+      formData.append('attachment', attachment)
+    }
+
+    const res = await postClubAnnouncement(formData)
     if (res.error) toast.error(res.error)
     else {
       toast.success('Announcement posted!')
       setTitle('')
       setContent('')
+      setAttachment(null)
       const anns = await fetchClubAnnouncements(clubId)
       setAnnouncements(anns.announcements || [])
     }
     setActionLoading(false)
+  }
+
+  async function handleDeleteAnnouncement(id: string) {
+    if (!confirm('Are you sure you want to delete this announcement?')) return
+    const res = await deleteClubAnnouncement(id)
+    if (res.error) toast.error(res.error)
+    else {
+      toast.success('Announcement deleted')
+      setAnnouncements(prev => prev.filter(a => a.id !== id))
+    }
   }
 
   async function handleCreatePosition(e: React.FormEvent) {
@@ -266,6 +287,10 @@ export default function ManageClubPage() {
                     <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Message Content</label>
                     <textarea value={content} onChange={e => setContent(e.target.value)} required rows={4} className="w-full px-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] resize-none" />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Attachment (Optional)</label>
+                    <input type="file" accept="image/*,.pdf" onChange={e => setAttachment(e.target.files?.[0] || null)} className="w-full px-4 py-2 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-500 hover:file:bg-blue-500/20" />
+                  </div>
                   <button type="submit" disabled={actionLoading} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors">
                     {actionLoading ? 'Posting...' : 'Post to Feed'}
                   </button>
@@ -277,9 +302,27 @@ export default function ManageClubPage() {
                 <div className="space-y-4">
                   {announcements.map(a => (
                     <div key={a.id} className="p-4 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border)/0.5)]">
-                      <p className="font-semibold text-sm">{a.title}</p>
-                      <p className="text-xs text-[hsl(var(--muted-foreground))] mb-2">{formatRelativeTime(a.created_at)}</p>
-                      <p className="text-sm text-[hsl(var(--foreground)/0.9)]">{a.content}</p>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-semibold text-sm">{a.title}</p>
+                          <p className="text-xs text-[hsl(var(--muted-foreground))] mb-2">{formatRelativeTime(a.created_at)}</p>
+                        </div>
+                        <button onClick={() => handleDeleteAnnouncement(a.id)} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title="Delete Announcement">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-[hsl(var(--foreground)/0.9)] mb-2 whitespace-pre-wrap">{a.content}</p>
+                      {a.attachment_url && (
+                        <div className="mt-2 text-xs font-medium text-blue-500">
+                          {a.attachment_type === 'image' ? (
+                            <img src={a.attachment_url} alt="Attachment" className="max-h-32 rounded-lg border border-[hsl(var(--border)/0.5)] object-cover" />
+                          ) : (
+                            <a href={a.attachment_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:underline">
+                              View Attached PDF
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

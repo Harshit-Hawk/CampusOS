@@ -246,15 +246,31 @@ export default function ClubDetailPage() {
               announcements.map((ann: any) => (
                 <div key={ann.id} className="glass rounded-2xl p-5">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center text-xs font-semibold overflow-hidden">
-                      {ann.profiles?.avatar_url ? <img src={ann.profiles.avatar_url} alt="" className="w-full h-full object-cover" /> : getInitials(ann.profiles?.full_name || 'A')}
+                    <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold overflow-hidden border border-[hsl(var(--border)/0.5)] shadow-sm">
+                      {ann.clubs?.logo_url ? <img src={ann.clubs.logo_url} alt="" className="w-full h-full object-cover" /> : getInitials(ann.clubs?.name || 'C')}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold">{ann.title}</p>
+                      <p className="text-sm font-bold flex items-center gap-1.5">{ann.clubs?.name} <span className="bg-blue-500 text-white text-[8px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider">Official</span></p>
                       <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{formatRelativeTime(ann.created_at)}</p>
                     </div>
                   </div>
+                  <h3 className="font-semibold mb-2">{ann.title}</h3>
                   <p className="text-sm text-[hsl(var(--foreground)/0.9)] whitespace-pre-wrap">{ann.content}</p>
+                  
+                  {ann.attachment_url && (
+                    <div className="mt-4">
+                      {ann.attachment_type === 'image' ? (
+                        <div className="rounded-xl overflow-hidden border border-[hsl(var(--border)/0.5)]">
+                          <img src={ann.attachment_url} alt="Announcement Attachment" className="w-full max-h-[500px] object-cover hover:scale-[1.02] transition-transform duration-300" />
+                        </div>
+                      ) : (
+                        <a href={ann.attachment_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)] text-sm font-medium hover:bg-[hsl(var(--muted))] transition-colors">
+                          <ClipboardList className="w-4 h-4 text-blue-500" />
+                          View Attached PDF
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
