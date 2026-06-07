@@ -117,8 +117,10 @@ function SelectField({ label, icon: Icon, required, name, children, value, onCha
 
 export default function LoginPage() {
   const [tab, setTab] = useState<'signin' | 'signup'>('signin')
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const searchParams = new URLSearchParams(window.location.search)
     if (searchParams.get('tab') === 'signup') {
       setTab('signup')
@@ -189,7 +191,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-[50%] relative bg-gradient-to-br from-blue-50 via-sky-50 to-white flex-col items-center justify-center overflow-hidden px-14 border-r border-gray-200 select-none">
         
         {/* Floating Particles */}
-        {PARTICLES.map(p => <Particle key={p.id} {...p} />)}
+        {mounted && PARTICLES.map(p => <Particle key={p.id} {...p} />)}
         
         {/* Subtle grid background */}
         <div 
