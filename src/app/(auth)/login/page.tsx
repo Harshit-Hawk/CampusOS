@@ -137,6 +137,7 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState('')
   const [rollNo, setRollNo] = useState('')
   const [mobileNumber, setMobileNumber] = useState('')
+  const [department, setDepartment] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
@@ -154,7 +155,7 @@ export default function LoginPage() {
 
   async function handleSignUp(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (password !== confirmPassword) {
+    if (signUpPassword !== confirmPassword) {
       setError("Passwords do not match")
       return
     }
@@ -164,6 +165,7 @@ export default function LoginPage() {
     setSuccess(null)
 
     const formData = new FormData(e.currentTarget)
+    
     const result = await signUp(formData)
     if (result?.error) {
       setError(result.error)
@@ -452,6 +454,18 @@ export default function LoginPage() {
                     placeholder="Enter your mobile number" 
                     required 
                   />
+
+                  <SelectField
+                    label="Branch / Department"
+                    icon={Building2}
+                    name="department"
+                    value={department}
+                    onChange={(e: any) => setDepartment(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>Select your branch</option>
+                    {DEPARTMENTS.map((d: string) => <option key={d} value={d}>{d}</option>)}
+                  </SelectField>
 
                   <Field 
                     label="Password" 

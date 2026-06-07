@@ -14,6 +14,7 @@ export async function signUp(formData: FormData) {
   const fullName = formData.get('fullName') as string
   const mobileNumber = formData.get('mobileNumber') as string
   const rollNo = formData.get('rollNo') as string
+  const department = formData.get('department') as string
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -23,6 +24,7 @@ export async function signUp(formData: FormData) {
         full_name: fullName,
         roll_no: rollNo,
         mobile_number: mobileNumber,
+        department: department,
       },
       emailRedirectTo: `${origin}/callback`,
     },
