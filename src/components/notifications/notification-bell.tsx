@@ -91,13 +91,26 @@ export function NotificationBell() {
       
       if (permission === 'granted') {
         const registration = await navigator.serviceWorker.register('/sw.js')
-        
-        // Wait for service worker to be ready
         await navigator.serviceWorker.ready
+
+        const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        if (!publicVapidKey) {
+          toast.error('VAPID public key is missing in environment.')
+          return
+        }
+
+        // Convert base64url to Uint8Array for iOS Safari compatibility
+        const padding = '='.repeat((4 - publicVapidKey.length % 4) % 4)
+        const base64 = (publicVapidKey + padding).replace(/\-/g, '+').replace(/_/g, '/')
+        const rawData = window.atob(base64)
+        const outputArray = new Uint8Array(rawData.length)
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i)
+        }
 
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+          applicationServerKey: outputArray
         })
 
         const result = await savePushSubscription(JSON.parse(JSON.stringify(subscription)))
