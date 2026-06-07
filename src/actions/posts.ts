@@ -11,7 +11,7 @@ export async function createPost(formData: FormData) {
   if (!user) return { error: 'Not authenticated' }
 
   // Check role
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const { data: profile } = await supabase.from('profiles').select('role, full_name').eq('id', user.id).single()
   if (!profile || !['admin', 'faculty', 'club_leader'].includes(profile.role)) {
     return { error: 'You do not have permission to post.' }
   }
@@ -39,6 +39,22 @@ export async function createPost(formData: FormData) {
     xp_source_type: 'post',
     xp_source_id: data!.id,
   } as any)
+
+  // Broadcast Notification to all other users
+  const { data: allUsers } = await supabase.from('profiles').select('id').neq('id', user.id)
+  if (allUsers && allUsers.length > 0) {
+    const notifications = allUsers.map((u: any) => ({
+      user_id: u.id,
+      type: 'announcement',
+      title: `New Post by ${profile.full_name || 'Someone'}`,
+      message: content.length > 50 ? content.substring(0, 47) + '...' : content,
+      link: '/feed'
+    }))
+    
+    // Batch insert notifications
+    // Supabase allows inserting up to 1000 rows at once safely.
+    await supabase.from('notifications').insert(notifications)
+  }
 
   return { data }
 }
