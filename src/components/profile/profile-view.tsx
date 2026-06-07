@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { fetchUserStats, fetchUserBadges, updateProfile, uploadAvatar } from '@/actions/profile'
 import { getGamificationProfile } from '@/actions/gamification'
 import { getInitials } from '@/lib/utils'
@@ -8,7 +9,7 @@ import { getXPProgress, getXPForNextLevel, getStageTitle, DEPARTMENTS } from '@/
 import { XPBar } from '@/components/gamification/xp-bar'
 import { LevelIndicator } from '@/components/gamification/level-indicator'
 import { StreakWidget } from '@/components/gamification/streak-widget'
-import { Users, Calendar, Medal, Newspaper, Shield, BookOpen, Activity, User, Trophy, Edit3, Save, Copy, Loader2, UploadCloud, Star, Mail, Phone, Building } from 'lucide-react'
+import { Users, Calendar, Medal, Newspaper, Shield, BookOpen, Activity, User, Trophy, Edit3, Save, Copy, Loader2, UploadCloud, Star, Mail, Phone, Building, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Profile } from '@/types/database'
