@@ -90,29 +90,50 @@ export function PostCard({ post, onLikeToggle, onDelete, style, userRole }: Post
     <article className="glass rounded-2xl p-5 animate-fade-in card-hover" style={{ opacity: 0, ...style }}>
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
-        <Link href={`/profile/${post.profiles?.roll_no}`} className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 ring-2 ring-transparent group-hover:ring-blue-500/30 transition-all">
-            {post.profiles?.avatar_url ? (
-              <img src={post.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
-            ) : (
-              getInitials(post.profiles?.full_name || 'U')
-            )}
-          </div>
-          <div>
-            <p className="text-sm font-semibold group-hover:text-blue-400 transition-colors">{post.profiles?.full_name}</p>
-            <div className="flex items-center gap-2 flex-wrap">
-              {post.profiles?.role !== 'admin' && post.profiles?.role !== 'faculty' && (
-                <>
-                  <span className="text-xs font-medium text-blue-500">{getStageTitle(post.profiles?.level || 1)}</span>
-                  <span className="text-xs text-[hsl(var(--muted-foreground))]">·</span>
-                </>
+        {post.club_id && (post as any).clubs ? (
+          <Link href={`/clubs/${post.club_id}`} className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 ring-2 ring-transparent group-hover:ring-blue-500/30 transition-all border border-[hsl(var(--border)/0.5)]">
+              {(post as any).clubs.logo_url ? (
+                <img src={(post as any).clubs.logo_url} alt="" className="w-full h-full rounded-full object-cover" />
+              ) : (
+                getInitials((post as any).clubs.name || 'C')
               )}
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">@{post.profiles?.roll_no}</span>
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">·</span>
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">{formatRelativeTime(post.created_at || new Date().toISOString())}</span>
             </div>
-          </div>
-        </Link>
+            <div>
+              <p className="text-sm font-bold flex items-center gap-1.5 group-hover:text-blue-400 transition-colors">
+                {(post as any).clubs.name} 
+                <span className="bg-blue-500 text-white text-[8px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider">Official</span>
+              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-[hsl(var(--muted-foreground))]">{formatRelativeTime(post.created_at || new Date().toISOString())}</span>
+              </div>
+            </div>
+          </Link>
+        ) : (
+          <Link href={`/profile/${post.profiles?.roll_no}`} className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 ring-2 ring-transparent group-hover:ring-blue-500/30 transition-all">
+              {post.profiles?.avatar_url ? (
+                <img src={post.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+              ) : (
+                getInitials(post.profiles?.full_name || 'U')
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-semibold group-hover:text-blue-400 transition-colors">{post.profiles?.full_name}</p>
+              <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                {post.profiles?.role !== 'admin' && post.profiles?.role !== 'faculty' && (
+                  <>
+                    <span className="text-xs font-medium text-blue-500">{getStageTitle(post.profiles?.level || 1)}</span>
+                    <span className="text-xs text-[hsl(var(--muted-foreground))]">·</span>
+                  </>
+                )}
+                <span className="text-xs text-[hsl(var(--muted-foreground))]">@{post.profiles?.roll_no}</span>
+                <span className="text-xs text-[hsl(var(--muted-foreground))]">·</span>
+                <span className="text-xs text-[hsl(var(--muted-foreground))]">{formatRelativeTime(post.created_at || new Date().toISOString())}</span>
+              </div>
+            </div>
+          </Link>
+        )}
 
         <div className="flex items-center gap-2">
           {userRole === 'admin' && (

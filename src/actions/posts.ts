@@ -82,7 +82,7 @@ export async function fetchPosts(cursor?: string, category?: string) {
 
   let query = supabase
     .from('posts')
-    .select('*, profiles(*)')
+    .select('*, profiles(*), clubs(name, logo_url)')
     .order('created_at', { ascending: false })
     .limit(POSTS_PER_PAGE)
 

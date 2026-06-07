@@ -305,6 +305,18 @@ export async function postClubAnnouncement(formData: FormData) {
     attachment_type
   })
 
+  // Mirror to posts table
+  let media_urls = attachment_url ? [attachment_url] : []
+  let postContent = `**${title}**\n\n${content}`
+  
+  await (supabase as any).from('posts').insert({
+    author_id: user.id,
+    club_id: clubId,
+    content: postContent,
+    category: 'announcements',
+    media_urls
+  })
+
   if (error) return { error: error.message }
   return { success: true }
 }
@@ -314,7 +326,7 @@ export async function deleteClubAnnouncement(announcementId: string) {
   
   const { data: announcement } = await (supabase as any)
     .from('club_announcements')
-    .select('attachment_url')
+    .select('attachment_url, club_id, title, content')
     .eq('id', announcementId)
     .single()
 
@@ -335,6 +347,12 @@ export async function deleteClubAnnouncement(announcementId: string) {
     .from('club_announcements')
     .delete()
     .eq('id', announcementId)
+
+  // Delete mirrored post
+  if (announcement) {
+    const postContent = `**${announcement.title}**\n\n${announcement.content}`
+    await (supabase as any).from('posts').delete().eq('club_id', announcement.club_id).eq('content', postContent)
+  }
 
   if (error) return { error: error.message }
   return { success: true }
