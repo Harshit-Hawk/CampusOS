@@ -384,8 +384,8 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
             <StreakWidget streaks={streaks} />
           </div>
         )}
-
-
+          </>
+        )}
       </div>
 
       {/* Edit Dialog */}
