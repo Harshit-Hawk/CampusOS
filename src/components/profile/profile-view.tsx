@@ -170,7 +170,7 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
                         </>
                       )}
                       <span className="text-[hsl(var(--border))]">•</span>
-                      <span className="flex items-center gap-1.5"><Mail className="w-4 h-4 opacity-70" /> {profile.roll_no}@university.edu</span>
+                      <span className="flex items-center gap-1.5"><Mail className="w-4 h-4 opacity-70" /> {profile.email || `${profile.roll_no}@university.edu`}</span>
                     </div>
                   </div>
                   {isOwnProfile && (
@@ -239,7 +239,7 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
                   </div>
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 opacity-70" />
-                    {profile.roll_no}@university.edu
+                    {profile.email || `${profile.roll_no}@university.edu`}
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 opacity-70" />
@@ -482,6 +482,10 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
               </div>
             </div>
           )}
+          <div>
+            <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Email Address</label>
+            <input name="email" type="email" placeholder="you@example.com" defaultValue={profile.email || ''} className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm" />
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Mobile Number</label>
             <input name="phone" placeholder="+91 9876543210" defaultValue={profile.phone || ''} className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm" />
