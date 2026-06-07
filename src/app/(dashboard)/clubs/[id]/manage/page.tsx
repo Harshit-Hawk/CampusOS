@@ -31,14 +31,18 @@ export default function ManageClubPage() {
 
   useEffect(() => {
     async function load() {
-      const result = await fetchClub(clubId)
+      const [result, role] = await Promise.all([
+        fetchClub(clubId),
+        import('@/actions/auth').then(m => m.getUserRole())
+      ])
+
       if (result.error || !result.club) {
         router.push('/clubs')
         return
       }
       
-      // Ensure only leader can access
-      if (result.club.leader_id !== result.userId) {
+      // Ensure only leader or admin can access
+      if (result.club.leader_id !== result.userId && role !== 'admin') {
         toast.error("Unauthorized")
         router.push(`/clubs/${clubId}`)
         return
