@@ -71,34 +71,41 @@ export async function fetchBatches() {
   return { batches: data || [] }
 }
 
-export async function createBatch(data: { name: string, department_id: string, roll_no_pattern: string, current_semester: number }) {
+export async function createBatch(data: { name: string, department_id: string, current_semester: number }) {
   const supabase = await createClient() as any
   const { error } = await supabase.from('student_batches').insert(data)
   if (error) return { error: error.message }
   return { success: true }
 }
 
+export async function assignStudentsToBatch(studentIds: string[], batchId: string) {
+  const supabase = await createClient() as any
+  // If batchId is empty string, we want to set it to null (unassign)
+  const val = batchId === '' ? null : batchId
+  const { error } = await supabase.from('profiles').update({ batch_id: val }).in('id', studentIds)
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
 export async function autoAssignBatchSubjects(batchId: string) {
   const supabase = await createClient() as any
-  
+
   // 1. Fetch batch details
   const { data: batch, error: batchErr } = await supabase
     .from('student_batches')
     .select('*, departments(*)')
     .eq('id', batchId)
     .single()
-    
+
   if (batchErr || !batch) return { error: 'Batch not found' }
   if (!batch.departments?.name) return { error: 'Department data missing for this batch' }
 
-  // 2. Fetch all students in this department matching the roll number pattern
-  // Note: ILIKE allows pattern matching, e.g., '23CS%'
+  // 2. Fetch all students assigned to this batch
   const { data: students, error: studentsErr } = await supabase
     .from('profiles')
     .select('id')
-    .eq('department', batch.departments.name) // assuming profile uses department name
-    .ilike('roll_no', batch.roll_no_pattern)
-    
+    .eq('batch_id', batch.id)
+
   if (studentsErr) return { error: 'Failed to fetch students' }
   if (!students || students.length === 0) return { error: 'No students found matching this batch pattern' }
 
@@ -108,7 +115,7 @@ export async function autoAssignBatchSubjects(batchId: string) {
     .select('id')
     .eq('department_id', batch.department_id)
     .eq('semester', batch.current_semester)
-    
+
   if (subjErr) return { error: 'Failed to fetch subjects' }
   if (!subjects || subjects.length === 0) return { error: 'No subjects found for this semester' }
 
@@ -132,29 +139,28 @@ export async function autoAssignBatchSubjects(batchId: string) {
 
 export async function enrollBatchToSubject(batchId: string, subjectId: string) {
   const supabase = await createClient() as any
-  
+
   // 1. Fetch batch details
   const { data: batch, error: batchErr } = await supabase
     .from('student_batches')
     .select('*, departments(*)')
     .eq('id', batchId)
     .single()
-    
+
   if (batchErr || !batch) return { error: 'Batch not found' }
   if (!batch.departments?.name) return { error: 'Department data missing for this batch' }
 
-  // 2. Fetch all students matching batch pattern
+  // 2. Fetch all students assigned to this batch
   const { data: students, error: studentsErr } = await supabase
     .from('profiles')
     .select('id')
-    .eq('department', batch.departments.name)
-    .ilike('roll_no', batch.roll_no_pattern)
-    
+    .eq('batch_id', batch.id)
+
   if (studentsErr) return { error: 'Failed to fetch students' }
   if (!students || students.length === 0) return { error: 'No students found matching this batch pattern' }
 
   // 3. Create student_subjects entries
-  const inserts = students.map((student: any) => ({
+  const inserts = students.map((student: { id: any }) => ({
     student_id: student.id,
     subject_id: subjectId
   }))
@@ -235,7 +241,7 @@ export async function fetchStudentAttendance(studentId: string, subjectId?: stri
   const supabase = await createClient() as any
   let query = supabase.from('attendance_records').select('*, subjects(*)').eq('student_id', studentId)
   if (subjectId) query = query.eq('subject_id', subjectId)
-  
+
   const { data, error } = await query
   if (error) return { error: error.message, attendance: [] }
   return { attendance: data || [] }
@@ -312,7 +318,7 @@ export async function gradeSubmission(submissionId: string, marks: number, feedb
     marks_obtained: marks,
     feedback: feedback
   }).eq('id', submissionId)
-  
+
   if (error) return { error: error.message }
   return { success: true }
 }

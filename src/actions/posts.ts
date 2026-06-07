@@ -104,6 +104,32 @@ export async function fetchPosts(cursor?: string, category?: string) {
   return { posts: posts || [], userRole }
 }
 
+export async function fetchPostById(id: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: post, error } = await supabase
+    .from('posts')
+    .select('*, profiles(*)')
+    .eq('id', id)
+    .single()
+
+  if (error || !post) return { error: error?.message || 'Post not found', post: null }
+
+  let user_has_liked = false
+  let user_has_saved = false
+
+  if (user) {
+    const { data: like } = await supabase.from('post_likes').select('post_id').eq('user_id', user.id).eq('post_id', id).maybeSingle()
+    if (like) user_has_liked = true
+
+    const { data: saved } = await supabase.from('saved_posts').select('post_id').eq('user_id', user.id).eq('post_id', id).maybeSingle()
+    if (saved) user_has_saved = true
+  }
+
+  return { post: { ...post, user_has_liked, user_has_saved } }
+}
+
 export async function likePost(postId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -190,6 +216,18 @@ export async function fetchComments(postId: string) {
 
   if (error) return { error: error.message, comments: [] }
   return { comments: data || [] }
+}
+
+export async function fetchCommentById(id: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('post_comments')
+    .select('*, profiles(*)')
+    .eq('id', id)
+    .single()
+
+  if (error || !data) return { error: error?.message || 'Comment not found', comment: null }
+  return { comment: data }
 }
 
 export async function deletePost(postId: string) {

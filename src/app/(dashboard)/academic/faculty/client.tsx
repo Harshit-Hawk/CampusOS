@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { markAttendance, createAssignment, gradeSubmission, uploadExamMarks, fetchSubjectAttendance } from '@/actions/academic'
-import { CheckCircle, Users, BookOpen, Clock, FileText, ChevronDown, Check, X, Loader2 } from 'lucide-react'
+import { markAttendance, createAssignment, gradeSubmission, uploadExamMarks, fetchSubjectAttendance, fetchSubjectAttendanceReport } from '@/actions/academic'
+import { CheckCircle, Users, BookOpen, Clock, FileText, ChevronDown, Check, X, Loader2, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -11,13 +11,13 @@ type Tab = 'attendance' | 'assignments' | 'marks'
 
 export function FacultyAcademicClient({ subjects, timetable, assignments, submissions, subjectStudents }: any) {
   const [activeTab, setActiveTab] = useState<Tab>('attendance')
-  
+
   if (subjects.length === 0) {
     return (
-      <EmptyState 
-        icon={BookOpen} 
-        title="No Subjects Assigned" 
-        description="You are not currently assigned to teach any subjects." 
+      <EmptyState
+        icon={BookOpen}
+        title="No Subjects Assigned"
+        description="You are not currently assigned to teach any subjects."
       />
     )
   }
@@ -59,6 +59,7 @@ function AttendanceTab({ subjects, subjectStudents }: { subjects: any[], subject
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [attendance, setAttendance] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [existingRecords, setExistingRecords] = useState<any[]>([])
 
   const students = subjectStudents[subjectId] || []
@@ -90,13 +91,57 @@ function AttendanceTab({ subjects, subjectStudents }: { subjects: any[], subject
     setLoading(false)
   }
 
+  const handleExportCSV = async () => {
+    setExporting(true)
+    try {
+      const { report } = await fetchSubjectAttendanceReport(subjectId)
+      if (!report || report.length === 0) {
+        toast.info('No attendance records found for this subject.')
+        setExporting(false)
+        return
+      }
+
+      const headers = ['Name', 'Roll No', 'Department', 'Course', 'Semester', 'Total Classes', 'Attended', 'Absent', 'Percentage (%)']
+      const rows = report.map((r: any) => {
+        const p = r.profile || {}
+        return [
+          p.full_name || 'N/A',
+          p.roll_no || 'N/A',
+          p.department || 'N/A',
+          p.course || 'N/A',
+          p.semester || 'N/A',
+          r.total_classes,
+          r.present + r.late,
+          r.absent,
+          r.percentage
+        ].map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      })
+
+      const csvContent = [headers.join(','), ...rows].join('\n')
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const selectedSubject = subjects.find(s => s.id === subjectId)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `${selectedSubject?.code}_attendance.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success('Export successful!')
+    } catch (e) {
+      toast.error('Failed to export CSV')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="glass rounded-2xl p-6">
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <div className="flex flex-col md:flex-row gap-4 mb-6 items-end">
         <div className="flex-1">
           <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Subject</label>
-          <select 
-            value={subjectId} 
+          <select
+            value={subjectId}
             onChange={e => setSubjectId(e.target.value)}
             className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           >
@@ -105,21 +150,31 @@ function AttendanceTab({ subjects, subjectStudents }: { subjects: any[], subject
         </div>
         <div className="flex-1">
           <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Date</label>
-          <input 
-            type="date" 
-            value={date} 
+          <input
+            type="date"
+            value={date}
             onChange={e => setDate(e.target.value)}
             className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           />
+        </div>
+        <div>
+          <button
+            onClick={handleExportCSV}
+            disabled={exporting}
+            className="w-full md:w-auto px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50 h-[38px]"
+          >
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Export CSV
+          </button>
         </div>
       </div>
 
       <div className="space-y-2">
         {students.length === 0 ? (
-          <EmptyState 
-            icon={Users} 
-            title="No students enrolled" 
-            description="There are currently no students enrolled in this subject." 
+          <EmptyState
+            icon={Users}
+            title="No students enrolled"
+            description="There are currently no students enrolled in this subject."
             className="py-8 bg-transparent shadow-none border-0"
           />
         ) : (
@@ -138,10 +193,10 @@ function AttendanceTab({ subjects, subjectStudents }: { subjects: any[], subject
                     onClick={() => setAttendance(prev => ({ ...prev, [student.id]: status }))}
                     className={cn(
                       "px-3 py-1 rounded-lg text-xs font-medium transition-colors border",
-                      attendance[student.id] === status 
+                      attendance[student.id] === status
                         ? status === 'present' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/50' :
                           status === 'absent' ? 'bg-red-500/10 text-red-500 border-red-500/50' :
-                          'bg-amber-500/10 text-amber-500 border-amber-500/50'
+                            'bg-amber-500/10 text-amber-500 border-amber-500/50'
                         : 'bg-transparent text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]'
                     )}
                   >
@@ -211,8 +266,8 @@ function AssignmentsTab({ subjects, assignments, submissions }: { subjects: any[
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Subject</label>
-              <select 
-                value={formData.subject_id} 
+              <select
+                value={formData.subject_id}
                 onChange={e => setFormData({ ...formData, subject_id: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               >
@@ -221,9 +276,9 @@ function AssignmentsTab({ subjects, assignments, submissions }: { subjects: any[
             </div>
             <div>
               <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Max Marks</label>
-              <input 
-                type="number" 
-                value={formData.max_marks} 
+              <input
+                type="number"
+                value={formData.max_marks}
                 onChange={e => setFormData({ ...formData, max_marks: Number(e.target.value) })}
                 required
                 className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
@@ -232,9 +287,9 @@ function AssignmentsTab({ subjects, assignments, submissions }: { subjects: any[
           </div>
           <div>
             <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Title</label>
-            <input 
-              type="text" 
-              value={formData.title} 
+            <input
+              type="text"
+              value={formData.title}
               onChange={e => setFormData({ ...formData, title: e.target.value })}
               required
               className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
@@ -242,8 +297,8 @@ function AssignmentsTab({ subjects, assignments, submissions }: { subjects: any[
           </div>
           <div>
             <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Description</label>
-            <textarea 
-              value={formData.description} 
+            <textarea
+              value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
               rows={3}
               required
@@ -252,9 +307,9 @@ function AssignmentsTab({ subjects, assignments, submissions }: { subjects: any[
           </div>
           <div>
             <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Due Date & Time</label>
-            <input 
-              type="datetime-local" 
-              value={formData.due_date} 
+            <input
+              type="datetime-local"
+              value={formData.due_date}
               onChange={e => setFormData({ ...formData, due_date: e.target.value })}
               required
               className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
@@ -272,10 +327,10 @@ function AssignmentsTab({ subjects, assignments, submissions }: { subjects: any[
 
       <div className="space-y-4">
         {assignments.length === 0 ? (
-          <EmptyState 
-            icon={FileText} 
-            title="No assignments posted" 
-            description="You haven't posted any assignments for this subject yet." 
+          <EmptyState
+            icon={FileText}
+            title="No assignments posted"
+            description="You haven't posted any assignments for this subject yet."
           />
         ) : (
           assignments.map((assignment: any) => {
@@ -333,7 +388,7 @@ function GradingRow({ submission, maxMarks }: { submission: any, maxMarks: numbe
         </p>
         <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{new Date(submission.submitted_at).toLocaleString()}</span>
       </div>
-      
+
       {submission.file_url && (
         <a href={submission.file_url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline mb-2 block truncate">
           Attached File: {submission.file_url.split('/').pop()}
@@ -346,21 +401,21 @@ function GradingRow({ submission, maxMarks }: { submission: any, maxMarks: numbe
       )}
 
       <div className="flex gap-2 mt-3 items-center">
-        <input 
-          type="number" 
-          value={marks} 
+        <input
+          type="number"
+          value={marks}
           onChange={e => setMarks(e.target.value)}
           placeholder={`/${maxMarks}`}
           className="w-20 px-2 py-1.5 rounded-lg bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm focus:outline-none"
         />
-        <input 
-          type="text" 
-          value={feedback} 
+        <input
+          type="text"
+          value={feedback}
           onChange={e => setFeedback(e.target.value)}
           placeholder="Feedback (optional)"
           className="flex-1 px-3 py-1.5 rounded-lg bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm focus:outline-none"
         />
-        <button 
+        <button
           onClick={handleSave}
           disabled={saving || !marks}
           className="px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-medium hover:bg-blue-600 disabled:opacity-50"
@@ -386,7 +441,7 @@ function MarksTab({ subjects, subjectStudents }: { subjects: any[], subjectStude
     const records = Object.entries(marks)
       .filter(([_, m]) => m !== '')
       .map(([student_id, m]) => ({ student_id, marks_obtained: Number(m), max_marks: maxMarks }))
-    
+
     if (records.length === 0) {
       toast.error('No marks entered')
       setLoading(false)
@@ -407,8 +462,8 @@ function MarksTab({ subjects, subjectStudents }: { subjects: any[], subjectStude
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div>
           <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Subject</label>
-          <select 
-            value={subjectId} 
+          <select
+            value={subjectId}
             onChange={e => setSubjectId(e.target.value)}
             className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           >
@@ -417,8 +472,8 @@ function MarksTab({ subjects, subjectStudents }: { subjects: any[], subjectStude
         </div>
         <div>
           <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Exam Type</label>
-          <select 
-            value={examType} 
+          <select
+            value={examType}
             onChange={e => setExamType(e.target.value)}
             className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           >
@@ -430,9 +485,9 @@ function MarksTab({ subjects, subjectStudents }: { subjects: any[], subjectStude
         </div>
         <div>
           <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Max Marks</label>
-          <input 
-            type="number" 
-            value={maxMarks} 
+          <input
+            type="number"
+            value={maxMarks}
             onChange={e => setMaxMarks(Number(e.target.value))}
             className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           />
@@ -441,10 +496,10 @@ function MarksTab({ subjects, subjectStudents }: { subjects: any[], subjectStude
 
       <div className="space-y-2">
         {students.length === 0 ? (
-          <EmptyState 
-            icon={Users} 
-            title="No students enrolled" 
-            description="There are currently no students enrolled in this subject." 
+          <EmptyState
+            icon={Users}
+            title="No students enrolled"
+            description="There are currently no students enrolled in this subject."
             className="py-8 bg-transparent shadow-none border-0"
           />
         ) : (
@@ -466,8 +521,8 @@ function MarksTab({ subjects, subjectStudents }: { subjects: any[], subjectStude
                       {student.full_name}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={marks[student.id] || ''}
                         onChange={e => setMarks(prev => ({ ...prev, [student.id]: e.target.value }))}
                         className="w-full px-2 py-1.5 rounded-lg bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] text-sm focus:outline-none focus:border-blue-500 text-right"

@@ -288,6 +288,27 @@ export default function EventDetailPage() {
               </div>
             )}
           </div>
+
+          <div className="mt-6 pt-6 border-t border-[hsl(var(--border)/0.5)]">
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-3">Team Members</p>
+            <div className="flex flex-wrap gap-3">
+              {attendees.filter(a => a.team_id === userTeam.id).map((member) => (
+                <Link key={member.id} href={`/profile/${member.profiles?.username}`} className="flex items-center gap-3 bg-[hsl(var(--background))] hover:bg-[hsl(var(--muted)/0.5)] transition-colors px-3 py-2 rounded-xl border border-[hsl(var(--border)/0.5)]">
+                  <div className="w-8 h-8 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center overflow-hidden shrink-0">
+                    {member.profiles?.avatar_url ? (
+                      <img src={member.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-medium">{getInitials(member.profiles?.full_name)}</span>
+                    )}
+                  </div>
+                  <div className="text-sm font-medium">
+                    {member.profiles?.full_name}
+                    {member.user_id === userId && <span className="text-[10px] ml-2 text-[hsl(var(--muted-foreground))]">(You)</span>}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -344,7 +365,7 @@ export default function EventDetailPage() {
       {showQR && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl relative">
-            <button onClick={() => setShowQR(false)} className="absolute top-4 right-4 p-2 rounded-full bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)] transition-colors">
+            <button onClick={() => setShowQR(false)} className="absolute top-4 right-4 z-10 p-2 rounded-full bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)] transition-colors">
               <X className="w-4 h-4" />
             </button>
             <div className="p-8 pb-6 flex flex-col items-center border-b border-[hsl(var(--border))] border-dashed relative">

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useInView } from 'react-intersection-observer'
-import { fetchPosts } from '@/actions/posts'
+import { fetchPosts, fetchPostById } from '@/actions/posts'
+import { createClient } from '@/lib/supabase/client'
 import { PostCard } from '@/components/feed/post-card'
 import { CreatePostModal } from '@/components/feed/create-post-modal'
 import { EventBanner } from '@/components/feed/event-banner'
@@ -57,6 +58,34 @@ export default function FeedPage() {
       loadPosts(posts[posts.length - 1]?.created_at || undefined)
     }
   }, [inView, hasMore, loadingMore, posts, loadPosts, loading])
+
+  // REALTIME POSTS SUBSCRIPTION
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase.channel('public:posts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, async (payload) => {
+        if (payload.eventType === 'INSERT') {
+          // A new post was created - fetch its full details (including profile/likes)
+          const { post } = await fetchPostById(payload.new.id)
+          if (post) {
+            setPosts(prev => [post as PostWithAuthor, ...prev])
+          }
+        } else if (payload.eventType === 'DELETE') {
+          setPosts(prev => prev.filter(p => p.id !== payload.old.id))
+        } else if (payload.eventType === 'UPDATE') {
+          // If the post was updated (e.g. content edit), fetch and update in place
+          const { post } = await fetchPostById(payload.new.id)
+          if (post) {
+            setPosts(prev => prev.map(p => p.id === payload.new.id ? { ...p, ...post } as PostWithAuthor : p))
+          }
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   const handlePostCreated = (newPost: PostWithAuthor) => {
     setPosts(prev => [newPost, ...prev])

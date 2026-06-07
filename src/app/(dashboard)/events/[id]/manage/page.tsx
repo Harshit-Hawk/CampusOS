@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee } from '@/actions/events'
+import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations } from '@/actions/events'
 import { fetchEventCertificates, issueCertificate } from '@/actions/certificates'
 import { getInitials } from '@/lib/utils'
-import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode } from 'lucide-react'
+import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode, Users, ChevronDown, ChevronUp, Download, Loader2 } from 'lucide-react'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -17,7 +17,7 @@ export default function ManageEventPage() {
 
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'scanner' | 'volunteers' | 'certificates'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'scanner' | 'volunteers' | 'certificates' | 'teams'>('overview')
 
   // Volunteers State
   const [volunteers, setVolunteers] = useState<any[]>([])
@@ -30,6 +30,13 @@ export default function ManageEventPage() {
   // Certificates State
   const [certificates, setCertificates] = useState<any[]>([])
   const [loadingCerts, setLoadingCerts] = useState(false)
+
+  // Teams State
+  const [teams, setTeams] = useState<any[]>([])
+  const [loadingTeams, setLoadingTeams] = useState(false)
+  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
+
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -78,6 +85,13 @@ export default function ManageEventPage() {
         fetchEventAttendees(eventId).then(res => setCheckedInList(res.checkedIn || []))
       }
     }
+    if (activeTab === 'teams') {
+      setLoadingTeams(true)
+      fetchEventTeamsWithMembers(eventId).then(res => {
+        setTeams(res.teams || [])
+        setLoadingTeams(false)
+      })
+    }
   }, [activeTab, eventId])
 
   async function handleProcessVolunteer(volId: string, status: 'approved' | 'rejected') {
@@ -119,6 +133,50 @@ export default function ManageEventPage() {
     }
   }
 
+  async function handleExportCSV() {
+    setExporting(true)
+    try {
+      const { registrations, attendees } = await fetchAllEventRegistrations(eventId)
+      
+      const attendedUserIds = new Set(attendees.map((a: any) => a.user_id))
+      
+      const headers = ['Name', 'Roll No', 'Email', 'Phone', 'Department', 'Course', 'Semester', 'Registered At', 'Attended', 'Team Name', 'Team Code']
+      const rows = registrations.map((reg: any) => {
+        const p = reg.profiles || {}
+        const t = reg.event_teams || {}
+        const isAttended = attendedUserIds.has(reg.user_id) ? 'Yes' : 'No'
+        return [
+          p.full_name || 'N/A',
+          p.roll_no || 'N/A',
+          p.email || 'N/A',
+          p.phone || 'N/A',
+          p.department || 'N/A',
+          p.course || 'N/A',
+          p.semester || 'N/A',
+          new Date(reg.registered_at).toLocaleString(),
+          isAttended,
+          t.name || 'N/A',
+          t.code || 'N/A'
+        ].map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      })
+      
+      const csvContent = [headers.join(','), ...rows].join('\n')
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', `${event.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_participants.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success('Export successful!')
+    } catch (e) {
+      toast.error('Failed to export CSV')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   if (loading) return <div className="max-w-4xl mx-auto p-6"><div className="glass h-64 rounded-2xl animate-pulse" /></div>
   if (!event) return null
 
@@ -148,11 +206,23 @@ export default function ManageEventPage() {
         <button onClick={() => setActiveTab('certificates')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'certificates' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
           <div className="flex items-center justify-center gap-2"><Award className="w-4 h-4" /> Certificates</div>
         </button>
+        {event.is_team_event && (
+          <button onClick={() => setActiveTab('teams')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'teams' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+            <div className="flex items-center justify-center gap-2"><Users className="w-4 h-4" /> Teams</div>
+          </button>
+        )}
       </div>
 
       <div className="glass rounded-2xl p-6 min-h-[400px]">
         {activeTab === 'overview' && (
           <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">Event Overview</h2>
+              <button onClick={handleExportCSV} disabled={exporting} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
+                {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                Export CSV
+              </button>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))] text-center">
                 <p className="text-3xl font-bold text-blue-400">{event.registered_count}</p>
@@ -301,6 +371,76 @@ export default function ManageEventPage() {
                     </div>
                   )
                 })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'teams' && event.is_team_event && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">Registered Teams</h3>
+              <span className="text-sm px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full font-medium">
+                {teams.length} Teams
+              </span>
+            </div>
+            {loadingTeams ? (
+              <div className="animate-pulse space-y-4">
+                <div className="h-32 bg-[hsl(var(--muted))] rounded-xl" />
+                <div className="h-32 bg-[hsl(var(--muted))] rounded-xl" />
+              </div>
+            ) : teams.length === 0 ? (
+              <p className="text-[hsl(var(--muted-foreground))] text-sm">No teams registered yet.</p>
+            ) : (
+              <div className="space-y-6">
+                {teams.map(team => (
+                  <div key={team.id} className="rounded-2xl border border-[hsl(var(--border))] overflow-hidden bg-[hsl(var(--background))] transition-all">
+                    <button 
+                      onClick={() => setExpandedTeamId(expandedTeamId === team.id ? null : team.id)}
+                      className="w-full p-4 bg-[hsl(var(--muted)/0.3)] hover:bg-[hsl(var(--muted)/0.6)] transition-colors border-b border-[hsl(var(--border))] flex items-center justify-between flex-wrap gap-4 text-left"
+                    >
+                      <div>
+                        <h4 className="font-bold text-lg">{team.name}</h4>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">Code: <span className="font-mono bg-[hsl(var(--background))] px-2 py-0.5 rounded text-[hsl(var(--foreground))] border border-[hsl(var(--border))]">{team.code}</span></p>
+                      </div>
+                      <div className="flex items-center gap-4 text-right">
+                        <span className="text-sm font-medium">
+                          {team.event_registrations?.length || 0} {event.max_team_size ? `/ ${event.max_team_size}` : ''} Members
+                        </span>
+                        <div className="p-1 rounded-full bg-[hsl(var(--background))] border border-[hsl(var(--border))]">
+                          {expandedTeamId === team.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </div>
+                      </div>
+                    </button>
+                    {expandedTeamId === team.id && (
+                      <div className="p-4 grid gap-4 grid-cols-1 md:grid-cols-2 animate-in slide-in-from-top-2 duration-200">
+                        {team.event_registrations?.map((reg: any) => (
+                          <div key={reg.id} className="flex items-start gap-3 p-3 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)]">
+                            <div className="w-10 h-10 rounded-full bg-[hsl(var(--background))] flex items-center justify-center overflow-hidden shrink-0">
+                              {reg.profiles?.avatar_url ? (
+                                <img src={reg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-xs font-bold">{getInitials(reg.profiles?.full_name)}</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate flex items-center gap-2">
+                                {reg.profiles?.full_name}
+                                {reg.user_id === team.creator_id && <Shield className="w-3.5 h-3.5 text-amber-500" />}
+                              </p>
+                              <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1 space-y-0.5">
+                                {reg.profiles?.roll_no && <p>Roll: {reg.profiles.roll_no}</p>}
+                                {reg.profiles?.department && <p>{reg.profiles.department} {reg.profiles.course ? `(${reg.profiles.course})` : ''}</p>}
+                                {reg.profiles?.semester && <p>Semester: {reg.profiles.semester}</p>}
+                                {reg.profiles?.phone && <p>Phone: {reg.profiles.phone}</p>}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>

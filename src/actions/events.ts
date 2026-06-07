@@ -102,6 +102,25 @@ export async function fetchEvent(eventId: string) {
   return { event, isRegistered, isBookmarked, isReminded, attendees: attendees || [] }
 }
 
+export async function fetchAllEventRegistrations(eventId: string) {
+  const supabase = await createClient()
+  
+  // Get all registrations
+  const { data: registrations } = await supabase
+    .from('event_registrations')
+    .select('*, profiles(*), event_teams(*)')
+    .eq('event_id', eventId)
+    .order('registered_at', { ascending: true })
+
+  // Get all check-ins to map attendance status
+  const { data: attendees } = await supabase
+    .from('event_attendees')
+    .select('user_id, check_in_time')
+    .eq('event_id', eventId)
+
+  return { registrations: registrations || [], attendees: attendees || [] }
+}
+
 export async function registerForEvent(eventId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -355,6 +374,18 @@ export async function fetchEventVolunteers(eventId: string) {
 
   if (error) return { error: error.message, volunteers: [] }
   return { volunteers: data || [] }
+}
+
+export async function fetchEventTeamsWithMembers(eventId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('event_teams')
+    .select('*, event_registrations(*, profiles(*))')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: true })
+
+  if (error) return { error: error.message, teams: [] }
+  return { teams: data || [] }
 }
 
 export async function processVolunteer(volunteerId: string, status: 'approved' | 'rejected') {

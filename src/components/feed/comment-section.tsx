@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { addComment, fetchComments } from '@/actions/posts'
+import { addComment, fetchComments, fetchCommentById } from '@/actions/posts'
+import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime, getInitials } from '@/lib/utils'
 import { getStageTitle } from '@/lib/constants'
 import { Send, Loader2 } from 'lucide-react'
@@ -26,6 +27,34 @@ export function CommentSection({ postId }: CommentSectionProps) {
       setLoading(false)
     }
     load()
+  }, [postId])
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase.channel(`public:post_comments:${postId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_comments', filter: `post_id=eq.${postId}` }, async (payload) => {
+        if (payload.eventType === 'INSERT') {
+          // Verify we don't already have this comment (if we just added it ourselves)
+          setComments((prev: any) => {
+            if (prev.find((c: any) => c.id === payload.new.id)) return prev
+            return prev
+          })
+          const { comment } = await fetchCommentById(payload.new.id)
+          if (comment) {
+            setComments((prev: any) => {
+              if (prev.find((c: any) => c.id === comment.id)) return prev
+              return [...prev, comment as CommentWithAuthor]
+            })
+          }
+        } else if (payload.eventType === 'DELETE') {
+          setComments((prev: any) => prev.filter((c: any) => c.id !== payload.old.id))
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [postId])
 
   async function handleSubmit(e: React.FormEvent) {

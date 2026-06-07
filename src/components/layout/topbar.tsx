@@ -73,11 +73,8 @@ export function Topbar({ user, setMobileMenuOpen }: TopbarProps) {
           "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-opacity duration-300 flex items-center gap-2",
           isSearchExpanded ? "opacity-0 sm:opacity-20" : "opacity-100"
         )}>
-          <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center shadow-md">
-            <Zap className="w-3.5 h-3.5 text-white" />
-          </div>
           <h1 className="text-lg font-bold tracking-tight">
-            Campus<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-sky-500">OS</span>
+            Campus<span className="text-blue-500">OS</span>
           </h1>
         </div>
 
