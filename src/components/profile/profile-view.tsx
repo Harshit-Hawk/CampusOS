@@ -25,7 +25,7 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
   const [editing, setEditing] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const isAdminOrFaculty = profile.role === 'admin' || profile.role === 'faculty'
-  const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'badges'>('overview')
+  const [activeTab, setActiveTab] = useState<'activity' | 'badges'>('activity')
   const [stats, setStats] = useState({ postsCount: 0, clubsCount: 0, eventsCount: 0 })
   const [badges, setBadges] = useState<any[]>([])
   const [streaks, setStreaks] = useState<any[]>([])
@@ -303,7 +303,7 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
       {/* Tabs */}
       {!isAdminOrFaculty && (
         <div className="flex overflow-x-auto gap-8 border-b border-[hsl(var(--border))] pb-0 scrollbar-none animate-fade-in stagger-2" style={{ opacity: 0 }}>
-          {['Overview', 'Activity', 'Badges'].map(tab => {
+          {['Activity', 'Badges'].map(tab => {
             const tabId = tab.toLowerCase() as any
             return (
               <button
@@ -326,63 +326,37 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
 
       {/* Tab Content */}
       <div className="animate-fade-in stagger-3" style={{ opacity: 0 }}>
-        {activeTab === 'overview' && (
+        {isAdminOrFaculty ? (
           <div className="grid grid-cols-1 gap-6">
             <div className="space-y-6">
-              {isAdminOrFaculty ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-2 bg-card rounded-3xl p-8 border border-[hsl(var(--border)/0.5)] shadow-sm">
-                    <h3 className="text-lg font-bold tracking-tight text-[hsl(var(--foreground))] mb-4 flex items-center gap-2">
-                      <User className="w-5 h-5 text-primary" /> About
-                    </h3>
-                    <p className="text-[15px] text-[hsl(var(--muted-foreground))] leading-relaxed">
-                      {profile.bio || "Experienced professional focused on fostering academic excellence and driving institutional growth through effective leadership."}
-                    </p>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2 bg-card rounded-3xl p-8 border border-[hsl(var(--border)/0.5)] shadow-sm">
+                  <h3 className="text-lg font-bold tracking-tight text-[hsl(var(--foreground))] mb-4 flex items-center gap-2">
+                    <User className="w-5 h-5 text-primary" /> About
+                  </h3>
+                  <p className="text-[15px] text-[hsl(var(--muted-foreground))] leading-relaxed">
+                    {profile.bio || "Experienced professional focused on fostering academic excellence and driving institutional growth through effective leadership."}
+                  </p>
+                </div>
 
-                  <div className="bg-card rounded-3xl p-8 border border-[hsl(var(--border)/0.5)] shadow-sm">
-                    <h3 className="text-lg font-bold tracking-tight text-[hsl(var(--foreground))] mb-4 flex items-center gap-2">
-                      <Star className="w-5 h-5 text-primary" /> Core Competencies
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {(profile.skills && profile.skills.length > 0 ? profile.skills : ['Administration', 'Strategic Planning', 'Leadership', 'Team Management', 'Academic Advising']).map(skill => (
-                        <span key={skill} className="px-3.5 py-1.5 rounded-lg bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] text-sm font-medium border border-[hsl(var(--border)/0.5)] hover:bg-primary/5 hover:border-primary/20 hover:text-primary transition-all cursor-default">
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
+                <div className="bg-card rounded-3xl p-8 border border-[hsl(var(--border)/0.5)] shadow-sm">
+                  <h3 className="text-lg font-bold tracking-tight text-[hsl(var(--foreground))] mb-4 flex items-center gap-2">
+                    <Star className="w-5 h-5 text-primary" /> Core Competencies
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {(profile.skills && profile.skills.length > 0 ? profile.skills : ['Administration', 'Strategic Planning', 'Leadership', 'Team Management', 'Academic Advising']).map((skill: string) => (
+                      <span key={skill} className="px-3.5 py-1.5 rounded-lg bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] text-sm font-medium border border-[hsl(var(--border)/0.5)] hover:bg-primary/5 hover:border-primary/20 hover:text-primary transition-all cursor-default">
+                        {skill}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              ) : (
-                <>
-                  <div className="glass rounded-3xl p-6">
-                    <h3 className="text-sm font-bold flex items-center gap-2 mb-4">
-                      <User className="w-4 h-4 text-[hsl(var(--muted-foreground))]" /> About Me
-                    </h3>
-                    <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
-                      {profile.bio || "Enthusiastic student passionate about learning and solving real-world problems through technology. Always eager to collaborate and build impactful projects."}
-                    </p>
-                  </div>
-
-                  <div className="glass rounded-3xl p-6">
-                    <h3 className="text-sm font-bold flex items-center gap-2 mb-4">
-                      <Activity className="w-4 h-4 text-[hsl(var(--muted-foreground))]" /> Skills
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {(profile.skills && profile.skills.length > 0 ? profile.skills : ['Web Development', 'JavaScript', 'React.js', 'Node.js', 'Python', 'UI/UX Design']).map(skill => (
-                        <span key={skill} className="px-4 py-1.5 rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] text-xs font-semibold border border-[hsl(var(--border))]">
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
+              </div>
             </div>
           </div>
-        )}
-
-        {activeTab === 'badges' && (
+        ) : (
+          <>
+            {activeTab === 'badges' && (
           <div className="glass rounded-3xl p-6">
             <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
               <Trophy className="w-5 h-5 text-amber-400" /> Unlocked Badges
