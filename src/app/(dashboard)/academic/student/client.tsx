@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { submitAssignment } from '@/actions/academic'
 import { fetchSubjectResources } from '@/actions/academic-resources'
 import { BookOpen, Calendar, CheckCircle, Clock, AlertTriangle, FileText, UploadCloud, ChevronRight, Check, ArrowLeft, CheckCircle2, XCircle, Loader2, Download, Link as LinkIcon } from 'lucide-react'
