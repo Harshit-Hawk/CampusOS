@@ -682,7 +682,7 @@ function ResourcesTab({ subjects }: { subjects: any[] }) {
           </div>
 
           {formData.resourceType === 'link' ? (
-            <div>
+            <div key="link-input">
               <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">External URL</label>
               <input
                 type="url"
@@ -694,7 +694,7 @@ function ResourcesTab({ subjects }: { subjects: any[] }) {
               />
             </div>
           ) : (
-            <div>
+            <div key="file-input">
               <label className="block text-xs font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Upload File</label>
               <input
                 type="file"
