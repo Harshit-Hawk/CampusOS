@@ -26,8 +26,7 @@ export default function ClubDetailPage() {
   const [positions, setPositions] = useState<any[]>([])
   const [announcements, setAnnouncements] = useState<any[]>([])
 
-  const [activeTab, setActiveTab] = useState<'feed' | 'members' | 'recruitment' | 'analytics'>('feed')
-  const [applications, setApplications] = useState<any[]>([])
+  const [activeTab, setActiveTab] = useState<'feed' | 'members'>('feed')
   const [loadingApps, setLoadingApps] = useState(false)
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [selectedPosition, setSelectedPosition] = useState<any>(null)
@@ -61,23 +60,7 @@ export default function ClubDetailPage() {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
 
   useEffect(() => {
-    const canManage = club && (club.leader_id === userId || userRole === 'admin')
-    if (activeTab === 'recruitment' && canManage) {
-      setLoadingApps(true)
-      fetchClubApplications(clubId).then(res => {
-        setApplications(res.applications || [])
-        setLoadingApps(false)
-      })
-    }
-    if (activeTab === 'analytics' && canManage) {
-      setLoadingAnalytics(true)
-      import('@/actions/analytics').then(({ getClubAnalytics }) => {
-        getClubAnalytics(clubId).then(res => {
-          setAnalytics(res.metrics)
-          setLoadingAnalytics(false)
-        })
-      })
-    }
+    // Keep for potential future use or remove if not needed
   }, [activeTab, club, clubId, userId, userRole])
 
   async function handleJoin() {
@@ -124,26 +107,7 @@ export default function ClubDetailPage() {
     setActionLoading(false)
   }
 
-  async function handleApprove(appId: string) {
-    const res = await processApplication(appId, 'approved')
-    if (res.error) {
-      toast.error(res.error)
-    } else {
-      setApplications(prev => prev.filter(a => a.id !== appId))
-      setClub((c: any) => c ? { ...c, member_count: c.member_count + 1 } : c)
-      toast.success('Application approved')
-    }
-  }
-
-  async function handleReject(appId: string) {
-    const res = await processApplication(appId, 'rejected')
-    if (res.error) {
-      toast.error(res.error)
-    } else {
-      setApplications(prev => prev.filter(a => a.id !== appId))
-      toast.success('Application rejected')
-    }
-  }
+  // Removed handleApprove and handleReject as they belong to manage page
 
   if (loading) {
     return (
@@ -220,15 +184,15 @@ export default function ClubDetailPage() {
               </div>
             )}
             
-            {userRole === 'admin' && (
+            {canManage && (
               <div className="mt-4 md:mt-0">
-                <button
-                  onClick={() => toast.success('Admin settings unlocked')}
+                <Link
+                  href={`/clubs/${clubId}/manage`}
                   className="px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)] text-[hsl(var(--foreground))]"
                 >
                   <Shield className="w-4 h-4" />
                   Manage Settings
-                </button>
+                </Link>
               </div>
             )}
           </div>
@@ -251,26 +215,6 @@ export default function ClubDetailPage() {
         >
           Members ({club.member_count})
         </button>
-        <button
-          onClick={() => setActiveTab('recruitment')}
-          className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'recruitment' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
-        >
-          <div className="flex items-center justify-center gap-2">
-            <Briefcase className="w-4 h-4" /> Recruitment
-          </div>
-        </button>
-        {canManage && (
-          <>
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'analytics' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <BarChart3 className="w-4 h-4" /> Analytics
-              </div>
-            </button>
-          </>
-        )}
       </div>
 
       {/* Tab Content */}
@@ -323,109 +267,6 @@ export default function ClubDetailPage() {
           </div>
         )}
 
-        {activeTab === 'recruitment' && (
-          <div className="space-y-6">
-            {/* Open Positions */}
-            <div className="glass rounded-2xl p-5">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Briefcase className="w-5 h-5 text-blue-400" /> Open Positions</h2>
-              {positions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {positions.map((pos: any) => (
-                    <div key={pos.id} className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)] flex flex-col h-full">
-                      <div className="flex-1 mb-4">
-                        <h3 className="font-semibold">{pos.title}</h3>
-                        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1 line-clamp-2">{pos.description}</p>
-                      </div>
-                      {!isLeader && !isMember && applicationStatus !== 'pending' && (
-                        <button onClick={() => handleApplyForPosition(pos)} className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium transition-colors">
-                          Apply for Role
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-[hsl(var(--muted-foreground))]">There are currently no specific open positions. You can still apply to join as a general member!</p>
-              )}
-            </div>
-
-            {isLeader && (
-              <div className="glass rounded-2xl p-5">
-                <h2 className="text-lg font-semibold mb-4">Pending Applications</h2>
-            {loadingApps ? (
-              <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-[hsl(var(--muted-foreground))]" /></div>
-            ) : applications.length > 0 ? (
-              <div className="space-y-4">
-                {applications.map((app: any) => (
-                  <div key={app.id} className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)]">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                          {app.profiles?.avatar_url ? <img src={app.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(app.profiles?.full_name || 'U')}
-                        </div>
-                        <div>
-                          <Link href={`/profile/${app.profiles?.roll_no}`} className="text-sm font-medium hover:underline">{app.profiles?.full_name}</Link>
-                          <p className="text-xs text-[hsl(var(--muted-foreground))]">{formatRelativeTime(app.created_at)}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => handleApprove(app.id)} className="p-2 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg transition-colors">
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleReject(app.id)} className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    {app.message && (
-                      <div className="mt-3 p-3 bg-[hsl(var(--background))] rounded-lg border border-[hsl(var(--border)/0.5)]">
-                        <p className="text-sm italic">"{app.message}"</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-                <div className="text-center py-8 text-[hsl(var(--muted-foreground))]">
-                  <p className="text-sm">No pending applications.</p>
-                </div>
-              )}
-            </div>
-          )}
-          </div>
-        )}
-
-        {activeTab === 'analytics' && isLeader && (
-            <div className="glass rounded-2xl p-5">
-              <h2 className="text-lg font-semibold mb-4">Club Analytics</h2>
-              {loadingAnalytics ? (
-                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-[hsl(var(--muted-foreground))]" /></div>
-              ) : analytics ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)]">
-                    <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Total Members</p>
-                    <p className="text-2xl font-bold">{analytics.memberCount}</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)]">
-                    <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Total Events</p>
-                    <p className="text-2xl font-bold text-blue-400">{analytics.totalEvents}</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)]">
-                    <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Total Registrations</p>
-                    <p className="text-2xl font-bold text-sky-400">{analytics.totalEventRegistrations}</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)]">
-                    <p className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Avg. Reg / Event</p>
-                    <p className="text-2xl font-bold text-amber-400">{analytics.avgRegistrationsPerEvent}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-[hsl(var(--muted-foreground))]">
-                  <p className="text-sm">Analytics not available.</p>
-                </div>
-              )}
-            </div>
-          )}
           </div>
         </div> {/* End Left Column */}
 
