@@ -3,12 +3,20 @@
 import { createClient } from '@/lib/supabase/server'
 import webpush from 'web-push'
 
-// Configure web-push with VAPID keys
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || 'mailto:admin@campusos.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string,
-  process.env.VAPID_PRIVATE_KEY as string
-)
+// Configure web-push with VAPID keys only if they exist
+try {
+  if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || 'mailto:admin@campusos.com',
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    )
+  } else {
+    console.warn('VAPID keys are missing. Push notifications will not work.')
+  }
+} catch (e) {
+  console.error('Failed to initialize web-push:', e)
+}
 
 export async function savePushSubscription(subscription: any) {
   const supabase = await createClient()
