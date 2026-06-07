@@ -192,9 +192,9 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
               </div>
             )}
             
-            <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
-              <div className="relative shrink-0 mt-2 sm:mt-0 group">
-                <div className="w-32 h-32 rounded-full gradient-primary flex items-center justify-center text-white text-3xl font-bold border-[6px] border-[hsl(var(--background))] shadow-xl overflow-hidden">
+            <div className="flex flex-row gap-5 sm:gap-6 items-center sm:items-start">
+              <div className="relative shrink-0 mt-0 group">
+                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full gradient-primary flex items-center justify-center text-white text-2xl sm:text-3xl font-bold border-4 sm:border-[6px] border-[hsl(var(--background))] shadow-xl overflow-hidden">
                   {profile.avatar_url ? (
                     <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -217,18 +217,18 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
                 )}
               </div>
               
-              <div className="flex-1 mt-2 flex flex-col items-center sm:items-start text-center sm:text-left">
-                <div className="flex flex-col sm:flex-row items-center gap-3 mb-1">
-                  <h1 className="text-2xl font-bold">{profile.full_name}</h1>
-                  <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500 text-xs font-semibold flex items-center gap-1">
+              <div className="flex-1 mt-0 flex flex-col items-start text-left min-w-0">
+                <div className="flex flex-wrap items-center gap-3 mb-1">
+                  <h1 className="text-xl sm:text-2xl font-bold truncate">{profile.full_name}</h1>
+                  <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500 text-xs font-semibold flex items-center gap-1 whitespace-nowrap">
                     <Star className="w-3 h-3 fill-current" /> {getStageTitle(level)}
                   </span>
                 </div>
-                <p className="text-sm text-[hsl(var(--muted-foreground))] flex items-center justify-center sm:justify-start gap-2 mb-6">
+                <p className="text-xs sm:text-sm text-[hsl(var(--muted-foreground))] flex items-center justify-start gap-2 mb-4">
                   Roll No. {profile.roll_no} <Copy className="w-3 h-3 cursor-pointer hover:text-[hsl(var(--foreground))]" onClick={() => { navigator.clipboard.writeText(profile.roll_no); toast.success('Copied!'); }} />
                 </p>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm text-[hsl(var(--muted-foreground))]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2.5 sm:gap-y-4 gap-x-8 text-xs sm:text-sm text-[hsl(var(--muted-foreground))] w-full">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4 opacity-70" />
                     {profile.course || 'Course'} · {profile.department || 'Not specified'}
