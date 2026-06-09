@@ -350,7 +350,7 @@ export default function EventDetailPage() {
                           {winner.team_id ? winner.event_teams?.name : winner.profiles?.full_name}
                         </p>
                         <p className="text-sm opacity-80 truncate">
-                          {winner.team_id ? `${winner.event_teams?.code}` : winner.profiles?.roll_no}
+                          {winner.team_id ? `Team` : winner.profiles?.roll_no}
                         </p>
                       </div>
                     </div>
