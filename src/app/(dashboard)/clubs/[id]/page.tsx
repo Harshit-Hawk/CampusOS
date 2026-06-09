@@ -288,7 +288,46 @@ export default function ClubDetailPage() {
         </div>
 
         {/* Right Column (Sidebar) */}
-              </div>
+        <div className="w-full lg:w-80 shrink-0 space-y-6 animate-fade-in stagger-1" style={{ opacity: 0 }}>
+          <div className="glass rounded-3xl p-6">
+            <h2 className="text-lg font-semibold mb-3">About</h2>
+            <p className="text-sm leading-relaxed text-[hsl(var(--foreground)/0.9)] whitespace-pre-wrap">{club.description}</p>
+            <div className="mt-4 pt-4 border-t border-[hsl(var(--border)/0.5)] flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+              <Calendar className="w-4 h-4" /> Founded {new Date(club.created_at).getFullYear()}
+            </div>
+          </div>
+
+          {/* Leadership Team */}
+          <div className="glass rounded-3xl p-6">
+            <h2 className="text-sm font-semibold text-[hsl(var(--muted-foreground))] mb-4">Leadership Team</h2>
+            <div className="space-y-4">
+              {club.profiles && (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center shrink-0 border border-[hsl(var(--border)/0.5)] overflow-hidden">
+                    {club.profiles.avatar_url ? <img src={club.profiles.avatar_url} alt="" className="w-full h-full object-cover" /> : getInitials(club.profiles.full_name)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{club.profiles.full_name}</p>
+                    <p className="text-xs text-amber-500 font-medium">Club President</p>
+                  </div>
+                </div>
+              )}
+
+              {facultyCoordinator && (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0 border border-[hsl(var(--border)/0.5)] overflow-hidden">
+                    {facultyCoordinator.avatar_url ? <img src={facultyCoordinator.avatar_url} alt="" className="w-full h-full object-cover" /> : getInitials(facultyCoordinator.full_name)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{facultyCoordinator.full_name}</p>
+                    <p className="text-xs text-blue-400 font-medium">Faculty Coordinator</p>
+                  </div>
+                </div>
+              )}
+
+              {!club.profiles && !facultyCoordinator && (
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">Leadership information not available.</p>
+              )}
             </div>
           </div>
 
