@@ -459,6 +459,13 @@ export async function createClubPosition(clubId: string, title: string, descript
   return { success: true }
 }
 
+export async function deleteClubPosition(positionId: string) {
+  const supabase = await createClient()
+  const { error } = await (supabase as any).from('club_positions').delete().eq('id', positionId)
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
 // --- Phase 10: Role Management ---
 export async function promoteClubMember(clubId: string, targetUserId: string, newRole: string) {
   const supabase = await createClient()

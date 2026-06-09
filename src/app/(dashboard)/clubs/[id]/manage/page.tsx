@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchClub, fetchClubApplications, processApplication, fetchClubAnnouncements, postClubAnnouncement, fetchClubPositions, createClubPosition, promoteClubMember, fetchClubAnalytics, removeClubMember, deleteClubAnnouncement, updateClubBranding } from '@/actions/clubs'
+import { fetchClub, fetchClubApplications, processApplication, fetchClubAnnouncements, postClubAnnouncement, fetchClubPositions, createClubPosition, deleteClubPosition, promoteClubMember, fetchClubAnalytics, removeClubMember, deleteClubAnnouncement, updateClubBranding } from '@/actions/clubs'
 import { getInitials, formatRelativeTime } from '@/lib/utils'
 import { ArrowLeft, Loader2, Users, ClipboardList, MessageSquare, Shield, Check, X, Briefcase, BarChart3, Trash2, Settings, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -139,6 +139,16 @@ export default function ManageClubPage() {
       setPositions(pos.positions || [])
     }
     setActionLoading(false)
+  }
+
+  async function handleDeletePosition(positionId: string) {
+    if (!confirm('Are you sure you want to delete this position?')) return
+    const res = await deleteClubPosition(positionId)
+    if (res.error) toast.error(res.error)
+    else {
+      toast.success('Position deleted')
+      setPositions(prev => prev.filter(p => p.id !== positionId))
+    }
   }
 
   async function handlePromote(targetUserId: string, newRole: string) {
@@ -317,12 +327,21 @@ export default function ManageClubPage() {
                 <h2 className="text-lg font-semibold mb-4">Active Positions</h2>
                 <div className="space-y-3">
                   {positions.map(p => (
-                    <div key={p.id} className="p-4 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border)/0.5)] flex justify-between items-center">
+                    <div key={p.id} className="p-4 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border)/0.5)] flex justify-between items-center group">
                       <div>
                         <p className="font-semibold">{p.title}</p>
                         <p className="text-xs text-[hsl(var(--muted-foreground))]">{p.description}</p>
                       </div>
-                      <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-500 font-medium">Open</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-500 font-medium">Open</span>
+                        <button
+                          onClick={() => handleDeletePosition(p.id)}
+                          className="p-1.5 text-[hsl(var(--muted-foreground))] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                          title="Delete Position"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
