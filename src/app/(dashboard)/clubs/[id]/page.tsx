@@ -143,7 +143,7 @@ export default function ClubDetailPage() {
             <img src={club.banner_url} alt={`${club.name} Banner`} className="w-full h-full object-cover" />
           )}
         </div>
-        <div className="px-6 pb-6 pt-4">
+        <div className="px-6 pb-6 pt-4 relative z-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between -mt-16 md:-mt-20 gap-4">
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl gradient-primary flex items-center justify-center text-white text-3xl font-bold border-4 border-[hsl(var(--background))] shadow-xl overflow-hidden shrink-0 bg-white">
               {club.logo_url ? <img src={club.logo_url} alt={club.name} className="w-full h-full object-cover" /> : getInitials(club.name)}
