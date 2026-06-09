@@ -6,15 +6,20 @@ import { Plus, X, Users, AlignLeft, Tag, Loader2, ChevronDown } from 'lucide-rea
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Modal } from '@/components/ui/modal'
+import { fetchAllUsers } from '@/actions/admin'
 
 export function CreateClubModal() {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [users, setUsers] = useState<any[]>([])
   const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
+    fetchAllUsers().then(res => {
+      if (res.users) setUsers(res.users)
+    })
   }, [])
 
   async function handleSubmit(formData: FormData) {
@@ -73,6 +78,42 @@ export function CreateClubModal() {
                 <option value="Sports">Sports</option>
                 <option value="Cultural">Cultural</option>
                 <option value="Other">Other</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))] pointer-events-none" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Assign Club Head (Optional)</label>
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))]" />
+              <select
+                name="leader_id"
+                defaultValue=""
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all appearance-none text-sm"
+              >
+                <option value="">No Club Head initially</option>
+                {users.filter(u => u.role !== 'admin' && u.role !== 'faculty').map(user => (
+                  <option key={user.id} value={user.id}>{user.full_name} ({user.roll_no})</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))] pointer-events-none" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Assign Faculty Coordinator (Optional)</label>
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))]" />
+              <select
+                name="faculty_coordinator_id"
+                defaultValue=""
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all appearance-none text-sm"
+              >
+                <option value="">No Faculty Coordinator initially</option>
+                {users.filter(u => u.role === 'faculty' || u.role === 'admin').map(user => (
+                  <option key={user.id} value={user.id}>{user.full_name} ({user.role})</option>
+                ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))] pointer-events-none" />
             </div>

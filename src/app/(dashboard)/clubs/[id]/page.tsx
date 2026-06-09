@@ -22,6 +22,7 @@ export default function ClubDetailPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [facultyCoordinator, setFacultyCoordinator] = useState<any>(null)
 
   const [positions, setPositions] = useState<any[]>([])
   const [announcements, setAnnouncements] = useState<any[]>([])
@@ -51,6 +52,7 @@ export default function ClubDetailPage() {
       setAnnouncements(result.announcements || [])
       setUserId(result.userId || null)
       setUserRole(role)
+      setFacultyCoordinator(result.facultyCoordinator || null)
       setLoading(false)
     }
     load()
@@ -127,30 +129,27 @@ export default function ClubDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
-        <ArrowLeft className="w-4 h-4" />
-        Back
-      </button>
+      <div className="flex items-center gap-4 animate-fade-in">
+        <button onClick={() => router.push('/clubs')} className="p-2 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors">
+          <ArrowLeft className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
+        </button>
+        <h1 className="text-xl font-bold tracking-tight">Club Profile</h1>
+      </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left Column (Main Content) */}
-        <div className="flex-1 space-y-6 min-w-0">
-          {/* Club Header */}
-          <div className="glass rounded-3xl overflow-hidden animate-fade-in">
-            <div className="h-32 gradient-primary relative">
-          {club.banner_url && <img src={club.banner_url} alt="" className="w-full h-full object-cover" />}
+      {/* Banner & Header */}
+      <div className="glass rounded-2xl overflow-hidden animate-fade-in">
+        <div className="h-48 md:h-64 bg-blue-500 relative w-full">
+          {club.banner_url && (
+            <img src={club.banner_url} alt={`${club.name} Banner`} className="w-full h-full object-cover" />
+          )}
         </div>
-        <div className="p-6 -mt-8 relative">
-          <div className="flex flex-col md:flex-row md:items-end gap-4">
-            <div className="w-20 h-20 rounded-xl gradient-primary flex items-center justify-center text-white text-2xl font-bold border-4 border-[hsl(var(--card))] shadow-xl z-10">
-              {club.logo_url ? (
-                <img src={club.logo_url} alt="" className="w-full h-full rounded-xl object-cover" />
-              ) : (
-                club.name.charAt(0)
-              )}
+        <div className="px-6 pb-6 pt-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between -mt-16 md:-mt-20 gap-4">
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl gradient-primary flex items-center justify-center text-white text-3xl font-bold border-4 border-[hsl(var(--background))] shadow-xl overflow-hidden shrink-0 bg-white">
+              {club.logo_url ? <img src={club.logo_url} alt={club.name} className="w-full h-full object-cover" /> : getInitials(club.name)}
             </div>
             <div className="flex-1 mt-2 md:mt-0">
-              <h1 className="text-xl font-bold">{club.name}</h1>
+              <h1 className="text-2xl md:text-3xl font-bold">{club.name}</h1>
               <div className="flex items-center gap-3 text-sm text-[hsl(var(--muted-foreground))]">
                 <span className="flex items-center gap-1"><Users className="w-4 h-4" />{club.member_count} members</span>
                 <span className="px-2 py-0.5 rounded-full bg-[hsl(var(--muted))] text-xs font-medium">{club.category}</span>
@@ -199,110 +198,96 @@ export default function ClubDetailPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 p-1 glass rounded-xl animate-fade-in stagger-1 overflow-x-auto" style={{ opacity: 0 }}>
-        <button
-          onClick={() => setActiveTab('feed')}
-          className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'feed' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
-        >
-          <div className="flex items-center justify-center gap-2">
-            <MessageSquare className="w-4 h-4" /> Feed
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left Column (Main Content) */}
+        <div className="flex-1 space-y-6 min-w-0">
+          {/* Tabs */}
+          <div className="flex gap-2 p-1 glass rounded-xl animate-fade-in stagger-1 overflow-x-auto" style={{ opacity: 0 }}>
+            <button
+              onClick={() => setActiveTab('feed')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'feed' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <MessageSquare className="w-4 h-4" /> Feed
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('members')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'members' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
+            >
+              Members ({club.member_count})
+            </button>
           </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('members')}
-          className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'members' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
-        >
-          Members ({club.member_count})
-        </button>
-      </div>
 
-      {/* Tab Content */}
-      <div className="animate-fade-in stagger-2" style={{ opacity: 0 }}>
+          {/* Tab Content */}
+          <div className="animate-fade-in stagger-2" style={{ opacity: 0 }}>
 
-        {activeTab === 'members' && (
-          <div className="glass rounded-2xl p-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {members.map((m: any) => (
-                <Link key={m.id} href={`/profile/${m.profiles?.roll_no}`} className="flex items-center gap-3 p-3 rounded-xl bg-[hsl(var(--muted)/0.5)] hover:bg-[hsl(var(--muted))] transition-colors border border-[hsl(var(--border)/0.3)]">
-                  <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                    {m.profiles?.avatar_url ? <img src={m.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(m.profiles?.full_name || 'U')}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{m.profiles?.full_name}</p>
-                    <p className={`text-[10px] capitalize font-semibold ${m.role === 'president' || m.role === 'leader' ? 'text-amber-500' : m.role === 'member' ? 'text-[hsl(var(--muted-foreground))]' : 'text-blue-400'}`}>
-                      {m.role.replace('_', ' ')}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+            {activeTab === 'members' && (
+              <div className="glass rounded-2xl p-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {members.map((m: any) => (
+                    <Link key={m.id} href={`/profile/${m.profiles?.roll_no}`} className="flex items-center gap-3 p-3 rounded-xl bg-[hsl(var(--muted)/0.5)] hover:bg-[hsl(var(--muted))] transition-colors border border-[hsl(var(--border)/0.3)]">
+                      <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                        {m.profiles?.avatar_url ? <img src={m.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(m.profiles?.full_name || 'U')}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{m.profiles?.full_name}</p>
+                        <p className={`text-[10px] capitalize font-semibold ${m.role === 'president' || m.role === 'leader' ? 'text-amber-500' : m.role === 'member' ? 'text-[hsl(var(--muted-foreground))]' : 'text-blue-400'}`}>
+                          {m.role.replace('_', ' ')}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {activeTab === 'feed' && (
-          <div className="space-y-4">
-            {announcements.length > 0 ? (
-              announcements.map((ann: any) => (
-                <div key={ann.id} className="glass rounded-2xl p-5">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold overflow-hidden border border-[hsl(var(--border)/0.5)] shadow-sm">
-                      {ann.clubs?.logo_url ? <img src={ann.clubs.logo_url} alt="" className="w-full h-full object-cover" /> : getInitials(ann.clubs?.name || 'C')}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold flex items-center gap-1.5">{ann.clubs?.name} <span className="bg-blue-500 text-white text-[8px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider">Official</span></p>
-                      <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{formatRelativeTime(ann.created_at)}</p>
-                    </div>
-                  </div>
-                  <h3 className="font-semibold mb-2">{ann.title}</h3>
-                  <p className="text-sm text-[hsl(var(--foreground)/0.9)] whitespace-pre-wrap">{ann.content}</p>
-                  
-                  {ann.attachment_url && (
-                    <div className="mt-4">
-                      {ann.attachment_type === 'image' ? (
-                        <div className="rounded-xl overflow-hidden border border-[hsl(var(--border)/0.5)]">
-                          <img src={ann.attachment_url} alt="Announcement Attachment" className="w-full max-h-[500px] object-cover hover:scale-[1.02] transition-transform duration-300" />
+            {activeTab === 'feed' && (
+              <div className="space-y-4">
+                {announcements.length > 0 ? (
+                  announcements.map((ann: any) => (
+                    <div key={ann.id} className="glass rounded-2xl p-5">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold overflow-hidden border border-[hsl(var(--border)/0.5)] shadow-sm">
+                          {ann.clubs?.logo_url ? <img src={ann.clubs.logo_url} alt="" className="w-full h-full object-cover" /> : getInitials(ann.clubs?.name || 'C')}
                         </div>
-                      ) : (
-                        <a href={ann.attachment_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)] text-sm font-medium hover:bg-[hsl(var(--muted))] transition-colors">
-                          <ClipboardList className="w-4 h-4 text-blue-500" />
-                          View Attached PDF
-                        </a>
+                        <div>
+                          <p className="text-sm font-bold flex items-center gap-1.5">{ann.clubs?.name} <span className="bg-blue-500 text-white text-[8px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider">Official</span></p>
+                          <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{formatRelativeTime(ann.created_at)}</p>
+                        </div>
+                      </div>
+                      <h3 className="font-semibold mb-2">{ann.title}</h3>
+                      <p className="text-sm text-[hsl(var(--foreground)/0.9)] whitespace-pre-wrap">{ann.content}</p>
+                      
+                      {ann.attachment_url && (
+                        <div className="mt-4">
+                          {ann.attachment_type === 'image' ? (
+                            <div className="rounded-xl overflow-hidden border border-[hsl(var(--border)/0.5)]">
+                              <img src={ann.attachment_url} alt="Announcement Attachment" className="w-full max-h-[500px] object-cover hover:scale-[1.02] transition-transform duration-300" />
+                            </div>
+                          ) : (
+                            <a href={ann.attachment_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)] text-sm font-medium hover:bg-[hsl(var(--muted))] transition-colors">
+                              <ClipboardList className="w-4 h-4 text-blue-500" />
+                              View Attached PDF
+                            </a>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="glass rounded-2xl p-12 text-center">
-                <p className="text-4xl mb-4">📢</p>
-                <p className="text-lg font-medium">No announcements yet</p>
-                <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">Check back later for updates from the club leaders.</p>
+                  ))
+                ) : (
+                  <div className="glass rounded-2xl p-12 text-center">
+                    <p className="text-4xl mb-4">📢</p>
+                    <p className="text-lg font-medium">No announcements yet</p>
+                    <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">Check back later for updates from the club leaders.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-
-          </div>
-        </div> {/* End Left Column */}
+        </div>
 
         {/* Right Column (Sidebar) */}
-        <div className="w-full lg:w-80 shrink-0 space-y-6 animate-fade-in stagger-1" style={{ opacity: 0 }}>
-          <div className="glass rounded-3xl p-6">
-            <h2 className="text-lg font-semibold mb-3">About</h2>
-            <p className="text-sm leading-relaxed text-[hsl(var(--foreground)/0.9)] whitespace-pre-wrap">{club.description}</p>
-          </div>
-
-          <div className="glass rounded-3xl p-6">
-            <h2 className="text-sm font-semibold text-[hsl(var(--muted-foreground))] mb-4">Club Details</h2>
-            <div className="space-y-4 text-sm">
-              <div className="flex items-center gap-3">
-                <Users className="w-4 h-4 text-blue-400" />
-                <span>{club.member_count} members</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Briefcase className="w-4 h-4 text-indigo-400" />
-                <span>{club.category}</span>
               </div>
             </div>
           </div>

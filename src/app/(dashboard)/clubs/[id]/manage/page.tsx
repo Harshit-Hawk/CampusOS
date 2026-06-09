@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchClub, fetchClubApplications, processApplication, fetchClubAnnouncements, postClubAnnouncement, fetchClubPositions, createClubPosition, promoteClubMember, fetchClubAnalytics, removeClubMember, deleteClubAnnouncement } from '@/actions/clubs'
+import { fetchClub, fetchClubApplications, processApplication, fetchClubAnnouncements, postClubAnnouncement, fetchClubPositions, createClubPosition, promoteClubMember, fetchClubAnalytics, removeClubMember, deleteClubAnnouncement, updateClubBranding } from '@/actions/clubs'
 import { getInitials, formatRelativeTime } from '@/lib/utils'
-import { ArrowLeft, Loader2, Users, ClipboardList, MessageSquare, Shield, Check, X, Briefcase, BarChart3, Trash2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Users, ClipboardList, MessageSquare, Shield, Check, X, Briefcase, BarChart3, Trash2, Settings, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -22,7 +22,7 @@ export default function ManageClubPage() {
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
 
-  const [activeTab, setActiveTab] = useState<'members' | 'applications' | 'positions' | 'announcements' | 'analytics'>('applications')
+  const [activeTab, setActiveTab] = useState<'members' | 'applications' | 'positions' | 'announcements' | 'analytics' | 'settings'>('applications')
 
   // Form states
   const [title, setTitle] = useState('')
@@ -160,6 +160,20 @@ export default function ManageClubPage() {
     }
   }
 
+  async function handleUpdateBranding(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setActionLoading(true)
+    const formData = new FormData(e.currentTarget)
+    const res = await updateClubBranding(clubId, formData)
+    if (res.error) toast.error(res.error)
+    else {
+      toast.success('Club branding updated successfully!')
+      const updated = await fetchClub(clubId)
+      if (updated.club) setClub(updated.club)
+    }
+    setActionLoading(false)
+  }
+
   if (loading) return <div className="max-w-4xl mx-auto"><div className="glass rounded-2xl h-64 animate-pulse" /></div>
 
   return (
@@ -194,10 +208,52 @@ export default function ManageClubPage() {
           <button onClick={() => setActiveTab('analytics')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'analytics' ? 'gradient-primary text-white shadow-md' : 'glass hover:bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))]'}`}>
             <BarChart3 className="w-4 h-4" /> Analytics
           </button>
+          <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'settings' ? 'gradient-primary text-white shadow-md' : 'glass hover:bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))]'}`}>
+            <Settings className="w-4 h-4" /> Settings
+          </button>
         </div>
 
         {/* Content Area */}
         <div className="flex-1 space-y-6 animate-fade-in">
+          
+          {/* Settings / Branding */}
+          {activeTab === 'settings' && (
+            <div className="glass rounded-2xl p-6">
+              <h2 className="text-xl font-bold mb-1">Club Branding</h2>
+              <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6">Update your club's avatar and banner image.</p>
+              
+              <form onSubmit={handleUpdateBranding} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Club Avatar</label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center overflow-hidden shrink-0">
+                      {club.logo_url ? <img src={club.logo_url} alt="" className="w-full h-full object-cover" /> : <Users className="w-8 h-8 text-white/50" />}
+                    </div>
+                    <input type="file" name="avatar" accept="image/*" className="text-sm text-[hsl(var(--muted-foreground))] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-500 hover:file:bg-blue-500/20" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Club Banner</label>
+                  <div className="space-y-3">
+                    {club.banner_url && (
+                      <div className="w-full h-32 rounded-xl overflow-hidden bg-black/20">
+                        <img src={club.banner_url} alt="Current Banner" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <input type="file" name="banner" accept="image/*" className="text-sm text-[hsl(var(--muted-foreground))] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-500 hover:file:bg-blue-500/20" />
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-[hsl(var(--border)/0.5)]">
+                  <button type="submit" disabled={actionLoading} className="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+                    {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    Save Branding Updates
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
           
           {activeTab === 'applications' && (
             <div className="glass rounded-2xl p-6">

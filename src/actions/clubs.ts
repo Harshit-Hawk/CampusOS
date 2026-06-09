@@ -88,6 +88,13 @@ export async function fetchClub(clubId: string) {
     .order('created_at', { ascending: false })
     .limit(10)
 
+  // Fetch faculty coordinator if present
+  let facultyCoordinator = null
+  if (club?.faculty_coordinator_id) {
+    const { data: fc } = await supabase.from('profiles').select('*').eq('id', club.faculty_coordinator_id).single()
+    if (fc) facultyCoordinator = fc
+  }
+
   return { 
     club, 
     isMember, 
@@ -96,7 +103,8 @@ export async function fetchClub(clubId: string) {
     events: events || [], 
     positions: positions || [],
     announcements: announcements || [],
-    userId: user?.id 
+    userId: user?.id,
+    facultyCoordinator
   }
 }
 
@@ -152,16 +160,82 @@ export async function createClub(formData: FormData) {
   const name = formData.get('name') as string
   const description = formData.get('description') as string
   const category = formData.get('category') as string
+  const leader_id = formData.get('leader_id') as string || null
+  const faculty_coordinator_id = formData.get('faculty_coordinator_id') as string || null
 
   const { data, error } = await supabase
     .from('clubs')
-    .insert({ name, description, category, leader_id: null } as any) // Admins don't lead the club by default
+    .insert({ name, description, category, leader_id, faculty_coordinator_id } as any)
     .select()
     .single()
 
   if (error) return { error: error.message }
 
+  // If a leader was assigned, add them to club_members and update their role
+  if (leader_id) {
+    // 1. Update user role to club_leader
+    await supabase.from('profiles').update({ role: 'club_leader' } as any).eq('id', leader_id)
+
+    // 2. Insert into club_members
+    await supabase.from('club_members').insert({
+      club_id: data.id,
+      user_id: leader_id,
+      role: 'leader'
+    } as any)
+  }
+
   return { data }
+}
+
+export async function updateClubBranding(clubId: string, formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Check if admin or leader
+  const [profileRes, clubRes] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('clubs').select('leader_id').eq('id', clubId).single()
+  ])
+  
+  if (profileRes.data?.role !== 'admin' && clubRes.data?.leader_id !== user.id) {
+    return { error: 'Unauthorized to update club branding' }
+  }
+
+  const avatar = formData.get('avatar') as File | null
+  const banner = formData.get('banner') as File | null
+
+  let logo_url = undefined
+  let banner_url = undefined
+
+  if (avatar && avatar.size > 0) {
+    const fileExt = avatar.name.split('.').pop()
+    const fileName = `${clubId}-avatar-${Date.now()}.${fileExt}`
+    const { error: uploadError } = await supabase.storage.from('club-assets').upload(fileName, avatar)
+    if (!uploadError) {
+      logo_url = supabase.storage.from('club-assets').getPublicUrl(fileName).data.publicUrl
+    }
+  }
+
+  if (banner && banner.size > 0) {
+    const fileExt = banner.name.split('.').pop()
+    const fileName = `${clubId}-banner-${Date.now()}.${fileExt}`
+    const { error: uploadError } = await supabase.storage.from('club-assets').upload(fileName, banner)
+    if (!uploadError) {
+      banner_url = supabase.storage.from('club-assets').getPublicUrl(fileName).data.publicUrl
+    }
+  }
+
+  const updates: any = {}
+  if (logo_url) updates.logo_url = logo_url
+  if (banner_url) updates.banner_url = banner_url
+
+  if (Object.keys(updates).length > 0) {
+    const { error } = await supabase.from('clubs').update(updates).eq('id', clubId)
+    if (error) return { error: error.message }
+  }
+
+  return { success: true }
 }
 
 export async function applyToClub(clubId: string, message: string, positionId?: string) {
