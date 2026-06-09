@@ -243,12 +243,13 @@ export async function applyToClub(clubId: string, message: string, positionId?: 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { error } = await (supabase.from('club_applications') as any).insert({
+  const { error } = await (supabase.from('club_applications') as any).upsert({
     club_id: clubId,
     user_id: user.id,
     message,
+    status: 'pending',
     position_id: positionId || null
-  })
+  }, { onConflict: 'club_id,user_id' })
 
   if (error) {
     if (error.code === '23505') return { error: 'You have already applied.' }
