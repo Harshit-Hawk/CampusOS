@@ -75,12 +75,13 @@ function AdminWalletView() {
   async function handleCreateReward(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setCreating(true)
-    const formData = new FormData(e.currentTarget)
+    const form = e.currentTarget
+    const formData = new FormData(form)
     const res = await createReward(formData)
     if (res.error) toast.error(res.error)
     else {
       toast.success('Reward added to store!')
-      e.currentTarget.reset()
+      form.reset()
       loadData()
     }
     setCreating(false)
