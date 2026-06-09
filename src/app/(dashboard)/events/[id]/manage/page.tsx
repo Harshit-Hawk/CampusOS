@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations } from '@/actions/events'
+import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner } from '@/actions/events'
 import { fetchEventCertificates, issueCertificate } from '@/actions/certificates'
 import { getInitials } from '@/lib/utils'
-import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode, Users, ChevronDown, ChevronUp, Download, Loader2 } from 'lucide-react'
+import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode, Users, ChevronDown, ChevronUp, Download, Loader2, Trophy } from 'lucide-react'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -17,7 +17,7 @@ export default function ManageEventPage() {
 
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'scanner' | 'volunteers' | 'certificates' | 'teams'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'scanner' | 'volunteers' | 'certificates' | 'teams' | 'winners'>('overview')
 
   // Volunteers State
   const [volunteers, setVolunteers] = useState<any[]>([])
@@ -37,6 +37,10 @@ export default function ManageEventPage() {
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
 
   const [exporting, setExporting] = useState(false)
+
+  // Winners State
+  const [winners, setWinners] = useState<any[]>([])
+  const [loadingWinners, setLoadingWinners] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -92,7 +96,20 @@ export default function ManageEventPage() {
         setLoadingTeams(false)
       })
     }
-  }, [activeTab, eventId])
+    if (activeTab === 'winners') {
+      setLoadingWinners(true)
+      fetchEventWinners(eventId).then(res => {
+        setWinners(res.winners || [])
+        setLoadingWinners(false)
+      })
+      // Pre-load candidates for dropdown
+      if (event?.is_team_event && teams.length === 0) {
+        fetchEventTeamsWithMembers(eventId).then(res => setTeams(res.teams || []))
+      } else if (!event?.is_team_event && checkedInList.length === 0) {
+        fetchEventAttendees(eventId).then(res => setCheckedInList(res.checkedIn || []))
+      }
+    }
+  }, [activeTab, eventId, event?.is_team_event])
 
   async function handleProcessVolunteer(volId: string, status: 'approved' | 'rejected') {
     const res = await processVolunteer(volId, status)
@@ -130,6 +147,26 @@ export default function ManageEventPage() {
     else {
       toast.success('Certificate issued!')
       fetchEventCertificates(eventId).then(r => setCertificates(r.certificates || []))
+    }
+  }
+
+  async function handleAssignWinner(placement: number, subjectId: string) {
+    if (!subjectId) return
+    const payload = event.is_team_event ? { teamId: subjectId } : { userId: subjectId }
+    const res = await markEventWinner(eventId, placement, payload)
+    if (res.error) toast.error(res.error)
+    else {
+      toast.success('Winner assigned!')
+      fetchEventWinners(eventId).then(r => setWinners(r.winners || []))
+    }
+  }
+
+  async function handleRemoveWinner(placement: number) {
+    const res = await removeEventWinner(eventId, placement)
+    if (res.error) toast.error(res.error)
+    else {
+      toast.success('Winner removed')
+      fetchEventWinners(eventId).then(r => setWinners(r.winners || []))
     }
   }
 
@@ -211,6 +248,9 @@ export default function ManageEventPage() {
             <div className="flex items-center justify-center gap-2"><Users className="w-4 h-4" /> Teams</div>
           </button>
         )}
+        <button onClick={() => setActiveTab('winners')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'winners' ? 'bg-amber-500 text-white shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+          <div className="flex items-center justify-center gap-2"><Trophy className="w-4 h-4" /> Winners</div>
+        </button>
       </div>
 
       <div className="glass rounded-2xl p-6 min-h-[400px]">
@@ -441,6 +481,91 @@ export default function ManageEventPage() {
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'winners' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold flex items-center gap-2"><Trophy className="w-5 h-5 text-amber-500" /> Event Winners</h3>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">Announce the top 3 on the event page.</p>
+            </div>
+            
+            {loadingWinners ? (
+               <div className="flex justify-center p-10"><Loader2 className="w-6 h-6 animate-spin text-amber-500" /></div>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-3">
+                {[1, 2, 3].map(place => {
+                  const winner = winners.find(w => w.placement === place)
+                  const colors = place === 1 ? 'border-amber-500/50 bg-amber-500/10 text-amber-600' : place === 2 ? 'border-slate-300 bg-slate-100 text-slate-600' : 'border-amber-700/30 bg-amber-900/10 text-amber-800'
+                  const title = place === 1 ? '1st Place' : place === 2 ? '2nd Place' : '3rd Place'
+                  
+                  return (
+                    <div key={place} className={`rounded-2xl border-2 p-5 flex flex-col justify-between ${colors} dark:bg-transparent`}>
+                      <div className="mb-4">
+                        <h4 className="font-bold text-lg mb-1 flex items-center gap-2">
+                          <Trophy className="w-5 h-5" /> {title}
+                        </h4>
+                        {!winner && <p className="text-xs opacity-70">Not assigned yet</p>}
+                      </div>
+                      
+                      {winner ? (
+                        <div className="bg-[hsl(var(--background))] rounded-xl p-4 shadow-sm border border-[hsl(var(--border))]">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center overflow-hidden shrink-0">
+                              {winner.team_id ? (
+                                <Users className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
+                              ) : (
+                                winner.profiles?.avatar_url ? <img src={winner.profiles.avatar_url} className="w-full h-full object-cover" /> : <span className="text-xs font-bold">{getInitials(winner.profiles?.full_name)}</span>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-sm truncate text-[hsl(var(--foreground))]">
+                                {winner.team_id ? winner.event_teams?.name : winner.profiles?.full_name}
+                              </p>
+                              <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">
+                                {winner.team_id ? `Team Code: ${winner.event_teams?.code}` : winner.profiles?.roll_no}
+                              </p>
+                            </div>
+                          </div>
+                          <button onClick={() => handleRemoveWinner(place)} className="w-full py-2 text-xs font-bold text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors">
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <select 
+                            id={`winner-select-${place}`}
+                            className="w-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500 text-[hsl(var(--foreground))]"
+                            defaultValue=""
+                          >
+                            <option value="" disabled>Select a {event.is_team_event ? 'team' : 'student'}</option>
+                            {event.is_team_event ? (
+                              teams.map(t => (
+                                <option key={t.id} value={t.id}>{t.name} ({t.event_registrations?.length || 0} members)</option>
+                              ))
+                            ) : (
+                              checkedInList.map(a => (
+                                <option key={a.user_id} value={a.user_id}>{a.profiles?.full_name} ({a.profiles?.roll_no})</option>
+                              ))
+                            )}
+                          </select>
+                          <button 
+                            onClick={() => {
+                              const select = document.getElementById(`winner-select-${place}`) as HTMLSelectElement
+                              handleAssignWinner(place, select.value)
+                            }}
+                            className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors"
+                          >
+                            Assign {title}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>

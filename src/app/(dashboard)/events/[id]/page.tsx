@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { getInitials } from '@/lib/utils'
-import { MapPin, Calendar, Users, UserPlus, UserMinus, ArrowLeft, Loader2, Clock, HandHeart, Check, Settings, QrCode, X, Bookmark, Share2, Bell } from 'lucide-react'
+import { MapPin, Calendar, Users, UserPlus, UserMinus, ArrowLeft, Loader2, Clock, HandHeart, Check, Settings, QrCode, X, Bookmark, Share2, Bell, Trophy } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { fetchEvent, registerForEvent, unregisterFromEvent, volunteerForEvent, toggleEventBookmark, toggleEventReminder } from '@/actions/events'
+import { fetchEvent, registerForEvent, unregisterFromEvent, volunteerForEvent, toggleEventBookmark, toggleEventReminder, fetchEventWinners } from '@/actions/events'
 import { TeamRegistrationModal } from '@/components/events/team-registration-modal'
 
 export default function EventDetailPage() {
@@ -22,6 +22,7 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [winners, setWinners] = useState<any[]>([])
 
   const [isVolunteering, setIsVolunteering] = useState(false)
 
@@ -44,6 +45,9 @@ export default function EventDetailPage() {
       setIsBookmarked(result.isBookmarked || false)
       setIsReminded(result.isReminded || false)
       setAttendees(result.attendees || [])
+      
+      const winnersRes = await fetchEventWinners(eventId)
+      setWinners(winnersRes.winners || [])
       
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
@@ -320,6 +324,41 @@ export default function EventDetailPage() {
               {event.description}
             </p>
           </div>
+
+          {winners.length > 0 && (
+            <div className="glass rounded-2xl p-6">
+              <h2 className="text-lg font-bold mb-6 flex items-center gap-2"><Trophy className="w-5 h-5 text-amber-500" /> Event Leaderboard</h2>
+              <div className="space-y-4">
+                {[1, 2, 3].map(place => {
+                  const winner = winners.find(w => w.placement === place)
+                  if (!winner) return null
+
+                  const colors = place === 1 ? 'border-amber-500/50 bg-amber-500/10 text-amber-600' : place === 2 ? 'border-slate-300 bg-slate-100 text-slate-600' : 'border-amber-700/30 bg-amber-900/10 text-amber-800'
+                  
+                  return (
+                    <div key={place} className={`flex items-center gap-4 p-4 rounded-xl border-2 ${colors} dark:bg-transparent`}>
+                      <div className="text-3xl font-black opacity-80 w-8 text-center">{place}</div>
+                      <div className="w-12 h-12 rounded-full bg-[hsl(var(--background))] flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                        {winner.team_id ? (
+                          <Users className="w-6 h-6 text-[hsl(var(--muted-foreground))]" />
+                        ) : (
+                          winner.profiles?.avatar_url ? <img src={winner.profiles.avatar_url} className="w-full h-full object-cover" /> : <span className="font-bold">{getInitials(winner.profiles?.full_name)}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-lg truncate text-[hsl(var(--foreground))]">
+                          {winner.team_id ? winner.event_teams?.name : winner.profiles?.full_name}
+                        </p>
+                        <p className="text-sm opacity-80 truncate">
+                          {winner.team_id ? `${winner.event_teams?.code}` : winner.profiles?.roll_no}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="md:col-span-1 space-y-6">

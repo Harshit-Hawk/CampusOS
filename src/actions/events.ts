@@ -562,3 +562,63 @@ export async function toggleEventReminder(eventId: string) {
     return { reminded: true }
   }
 }
+
+// --- Phase 12: Event Winners ---
+
+export async function fetchEventWinners(eventId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('event_winners')
+    .select('*, profiles(full_name, roll_no, avatar_url), event_teams(name, code, creator_id)')
+    .eq('event_id', eventId)
+    .order('placement', { ascending: true })
+
+  if (error) return { error: error.message, winners: [] }
+  return { winners: data || [] }
+}
+
+export async function markEventWinner(eventId: string, placement: number, payload: { userId?: string, teamId?: string }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Must be admin or organizer
+  const [profileRes, eventRes] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('events').select('organizer_id').eq('id', eventId).single()
+  ])
+  
+  if (profileRes.data?.role !== 'admin' && eventRes.data?.organizer_id !== user.id) {
+    return { error: 'Unauthorized' }
+  }
+
+  // Ensure placement uniqueness via upsert on constraint
+  const { error } = await (supabase.from('event_winners') as any).upsert({
+    event_id: eventId,
+    placement,
+    user_id: payload.userId || null,
+    team_id: payload.teamId || null,
+  }, { onConflict: 'event_id, placement' })
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function removeEventWinner(eventId: string, placement: number) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const [profileRes, eventRes] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('events').select('organizer_id').eq('id', eventId).single()
+  ])
+  
+  if (profileRes.data?.role !== 'admin' && eventRes.data?.organizer_id !== user.id) {
+    return { error: 'Unauthorized' }
+  }
+
+  const { error } = await supabase.from('event_winners').delete().eq('event_id', eventId).eq('placement', placement)
+  if (error) return { error: error.message }
+  return { success: true }
+}
