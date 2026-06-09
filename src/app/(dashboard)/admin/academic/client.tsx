@@ -7,7 +7,7 @@ import { createDepartment, createSubject, assignFaculty, createTimetable } from 
 import { Plus, Building, BookOpen, Users, Calendar, Loader2, FileText, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { createBatch, autoAssignBatchSubjects, enrollBatchToSubject, fetchBatchSemesterAttendanceReport, assignStudentToBatch } from '@/actions/academic'
+import { createBatch, autoAssignBatchSubjects, enrollBatchToSubject, fetchBatchSemesterAttendanceReport, assignStudentsToBatch } from '@/actions/academic'
 
 type Tab = 'departments' | 'subjects' | 'enrollment' | 'timetable' | 'batches' | 'reports'
 
