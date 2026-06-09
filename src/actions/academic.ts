@@ -41,6 +41,7 @@ export async function createSubject(data: any) {
 export async function assignFaculty(facultyId: string, subjectId: string) {
   const supabase = await createClient() as any
   const { error } = await supabase.from('faculty_subjects').insert({ faculty_id: facultyId, subject_id: subjectId })
+  if (error?.code === '23505') return { error: 'Faculty is already assigned to this subject.' }
   if (error) return { error: error.message }
   return { success: true }
 }
