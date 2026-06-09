@@ -253,7 +253,7 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
         )}
 
         {/* Right Card: Rank */}
-        {profile.role !== 'admin' && profile.role !== 'faculty' && (
+        {isOwnProfile && profile.role !== 'admin' && profile.role !== 'faculty' && (
           <Link href="/ranks" className="glass rounded-3xl p-6 w-full lg:w-80 shrink-0 flex flex-col justify-center relative group hover:border-[hsl(var(--ring)/0.5)] transition-all overflow-hidden block">
             <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0">
               <ArrowRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
