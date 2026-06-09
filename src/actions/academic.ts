@@ -258,6 +258,109 @@ export async function fetchSubjectAttendance(subjectId: string) {
   return { attendance: data || [] }
 }
 
+export async function fetchSubjectAttendanceReport(subjectId: string) {
+  const supabase = await createClient() as any
+  const { data, error } = await supabase
+    .from('attendance_records')
+    .select('*, profiles(full_name, roll_no, department, course, semester)')
+    .eq('subject_id', subjectId)
+  
+  if (error) return { error: error.message, report: [] }
+
+  const map = new Map()
+  for (const r of data) {
+    if (!map.has(r.student_id)) {
+      map.set(r.student_id, { profile: r.profiles, total_classes: 0, present: 0, absent: 0, late: 0, excused: 0 })
+    }
+    const studentStats = map.get(r.student_id)
+    studentStats.total_classes++
+    if (r.status === 'present') studentStats.present++
+    else if (r.status === 'absent') studentStats.absent++
+    else if (r.status === 'late') studentStats.late++
+    else if (r.status === 'excused') studentStats.excused++
+  }
+
+  const report = Array.from(map.values()).map((stats: any) => ({
+    ...stats,
+    percentage: stats.total_classes > 0 ? Math.round(((stats.present + stats.late) / stats.total_classes) * 100) : 0
+  }))
+
+  return { report }
+}
+
+export async function fetchBatchSemesterAttendanceReport(batchId: string, semester: number) {
+  const supabase = await createClient() as any
+  
+  const { data: students, error: stdErr } = await supabase
+    .from('profiles')
+    .select('id, full_name, roll_no, department, course, semester')
+    .eq('batch_id', batchId)
+    
+  if (stdErr) return { error: stdErr.message }
+  if (!students || students.length === 0) return { report: [], subjects: [] }
+  
+  const studentIds = students.map((s: any) => s.id)
+  
+  const { data: records, error: recErr } = await supabase
+    .from('attendance_records')
+    .select('*, subjects(name, semester)')
+    .in('student_id', studentIds)
+    
+  if (recErr) return { error: recErr.message }
+  
+  const semRecords = records.filter((r: any) => r.subjects?.semester === semester)
+  
+  const subjectMap = new Map()
+  semRecords.forEach((r: any) => {
+    if (r.subject_id && !subjectMap.has(r.subject_id)) {
+      subjectMap.set(r.subject_id, { id: r.subject_id, name: r.subjects.name })
+    }
+  })
+  const subjects = Array.from(subjectMap.values())
+  
+  const reportMap = new Map()
+  students.forEach((s: any) => {
+    reportMap.set(s.id, {
+      profile: s,
+      subjectStats: {} as Record<string, number>,
+      total_classes: 0,
+      attended_classes: 0,
+      overallPercentage: 0
+    })
+  })
+  
+  const studentSubjectStats: Record<string, Record<string, { total: number, attended: number }>> = {}
+  
+  for (const r of semRecords) {
+    if (!studentSubjectStats[r.student_id]) studentSubjectStats[r.student_id] = {}
+    if (!studentSubjectStats[r.student_id][r.subject_id]) {
+      studentSubjectStats[r.student_id][r.subject_id] = { total: 0, attended: 0 }
+    }
+    
+    studentSubjectStats[r.student_id][r.subject_id].total++
+    if (r.status === 'present' || r.status === 'late') {
+      studentSubjectStats[r.student_id][r.subject_id].attended++
+    }
+  }
+  
+  for (const [studentId, stats] of Object.entries(studentSubjectStats)) {
+    const r = reportMap.get(studentId)
+    if (!r) continue
+    
+    for (const [subjectId, subjStat] of Object.entries(stats)) {
+      const subjectName = subjectMap.get(subjectId)?.name
+      if (subjectName) {
+        r.subjectStats[subjectName] = subjStat.total > 0 ? Math.round((subjStat.attended / subjStat.total) * 100) : 0
+      }
+      r.total_classes += subjStat.total
+      r.attended_classes += subjStat.attended
+    }
+    r.overallPercentage = r.total_classes > 0 ? Math.round((r.attended_classes / r.total_classes) * 100) : 0
+  }
+  
+  return { report: Array.from(reportMap.values()), subjects }
+}
+
 // --- ASSIGNMENTS ---
 
 export async function fetchAssignments(subjectIds: string[]) {
