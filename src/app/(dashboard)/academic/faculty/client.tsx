@@ -97,7 +97,12 @@ function AttendanceTab({ subjects, subjectStudents }: { subjects: any[], subject
   const handleExportCSV = async () => {
     setExporting(true)
     try {
-      const { report } = await fetchSubjectAttendanceReport(subjectId)
+      const { report, error } = await fetchSubjectAttendanceReport(subjectId)
+      if (error) {
+        toast.error(error)
+        setExporting(false)
+        return
+      }
       if (!report || report.length === 0) {
         toast.info('No attendance records found for this subject.')
         setExporting(false)

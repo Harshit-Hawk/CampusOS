@@ -252,7 +252,7 @@ export async function fetchSubjectAttendance(subjectId: string) {
   const supabase = await createClient() as any
   const { data, error } = await supabase
     .from('attendance_records')
-    .select('*, profiles(*)')
+    .select('*, profiles!student_id(*)')
     .eq('subject_id', subjectId)
   if (error) return { error: error.message, attendance: [] }
   return { attendance: data || [] }
@@ -262,10 +262,12 @@ export async function fetchSubjectAttendanceReport(subjectId: string) {
   const supabase = await createClient() as any
   const { data, error } = await supabase
     .from('attendance_records')
-    .select('*, profiles(full_name, roll_no, department, course, semester)')
+    .select('*, profiles!student_id(full_name, roll_no, department, course, semester)')
     .eq('subject_id', subjectId)
   
-  if (error) return { error: error.message, report: [] }
+  if (error) {
+    return { error: error.message, report: null }
+  }
 
   const map = new Map()
   for (const r of data) {
