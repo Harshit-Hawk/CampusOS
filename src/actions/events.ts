@@ -133,6 +133,14 @@ export async function registerForEvent(eventId: string) {
     .eq('id', eventId)
     .single()
 
+  // Prevent volunteers from registering as participants
+  const { data: volunteer } = await (supabase.from('event_volunteers') as any)
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (volunteer) return { error: 'You are already a volunteer for this event' }
+
   const ev = event as any
   if (ev?.max_attendees && ev.registered_count >= ev.max_attendees) {
     return { error: 'Event is full' }
@@ -174,6 +182,14 @@ export async function registerForTeamEvent(
     .select('max_attendees, registered_count, max_team_size')
     .eq('id', eventId)
     .single()
+
+  // Prevent volunteers from registering as participants
+  const { data: volunteer } = await (supabase.from('event_volunteers') as any)
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (volunteer) return { error: 'You are already a volunteer for this event' }
 
   const ev = event as any
   if (ev?.max_attendees && ev.registered_count >= ev.max_attendees) {
@@ -340,6 +356,14 @@ export async function volunteerForEvent(eventId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
+
+  // Prevent participants from volunteering
+  const { data: participant } = await (supabase.from('event_registrations') as any)
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (participant) return { error: 'You are already registered as a participant' }
 
   const { error } = await (supabase.from('event_volunteers') as any)
     .insert({ event_id: eventId, user_id: user.id })
