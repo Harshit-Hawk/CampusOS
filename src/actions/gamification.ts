@@ -14,6 +14,15 @@ export async function awardXP(userId: string, amount: number, reason: string, so
   } as any)
 }
 
+export async function awardCC(userId: string, amount: number, reason: string) {
+  const supabase = await createClient()
+  await supabase.rpc('increment_cc', {
+    target_user_id: userId,
+    cc_amount: amount,
+    cc_reason: reason,
+  } as any)
+}
+
 export async function fetchXPHistory(userId: string) {
   const supabase = await createClient()
   const { data, error } = await supabase

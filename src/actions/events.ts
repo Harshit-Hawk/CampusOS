@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { XP_REWARDS } from '@/lib/constants'
-import { awardXP } from './gamification'
+import { awardXP, awardCC } from './gamification'
 
 export async function fetchEvents(filter?: string) {
   const supabase = await createClient()
@@ -484,8 +484,13 @@ export async function checkInAttendee(eventId: string, targetUserId: string) {
     })
     .eq('id', targetUserId)
 
+  // Base event checkin reward
+  await awardXP(targetUserId, 30, 'Attended an event', 'event', eventId)
+  await awardCC(targetUserId, 30, 'Event Attendance Reward')
+
   if (bonusXp > 0) {
     await awardXP(targetUserId, bonusXp, `Event Streak x${newStreak}!`, 'event', eventId)
+    await awardCC(targetUserId, bonusXp, `Event Streak x${newStreak}!`)
   }
   // -----------------------------------
 

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { XP_REWARDS } from '@/lib/constants'
+import { awardXP, awardCC } from './gamification'
 
 export async function fetchClubs(search?: string) {
   const supabase = await createClient()
@@ -304,6 +305,10 @@ export async function processApplication(applicationId: string, status: 'approve
       user_id: app.user_id,
       role: 'member'
     })
+    
+    // Award Gamification Points
+    await awardXP(app.user_id, 20, 'Joined a Club', 'club', app.club_id)
+    await awardCC(app.user_id, 20, 'Joined a Club')
     
     // Notify user
     await (supabase.from('notifications') as any).insert({
