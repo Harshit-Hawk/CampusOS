@@ -136,11 +136,10 @@ export default function LeaderboardPage() {
         </div>
       ) : (
         <>
-          {/* Top 3 Podium */}
           {top3.length >= 3 && (
-            <div className="grid grid-cols-3 gap-1 sm:gap-3 animate-fade-in">
+            <div className="grid grid-cols-3 gap-1 sm:gap-3 items-end animate-fade-in">
               {/* 2nd Place */}
-              <div className="glass rounded-2xl p-2 sm:p-4 text-center card-hover mt-6 relative overflow-hidden">
+              <div className="glass rounded-2xl p-2 sm:p-4 text-center card-hover relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-400/10 pointer-events-none" />
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-300 to-slate-500 shadow-lg mx-auto flex items-center justify-center text-white text-sm font-bold mb-2">2</div>
                 <div className="w-14 h-14 rounded-full gradient-primary mx-auto flex items-center justify-center text-white font-bold mb-2 ring-2 ring-slate-400/50">
@@ -177,7 +176,7 @@ export default function LeaderboardPage() {
               </div>
 
               {/* 3rd Place */}
-              <div className="glass rounded-2xl p-2 sm:p-4 text-center card-hover mt-6 relative overflow-hidden">
+              <div className="glass rounded-2xl p-2 sm:p-4 text-center card-hover relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-amber-700/10 pointer-events-none" />
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 shadow-lg mx-auto flex items-center justify-center text-white text-sm font-bold mb-2">3</div>
                 <div className="w-14 h-14 rounded-full gradient-primary mx-auto flex items-center justify-center text-white font-bold mb-2 ring-2 ring-amber-700/50">
@@ -205,38 +204,42 @@ export default function LeaderboardPage() {
                 <Link
                   key={profile.id}
                   href={scope === 'club_ranking' ? `/clubs/${profile.id}` : `/profile/${profile.roll_no}`}
-                  className="glass rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 card-hover hover:-translate-y-1 transition-all"
+                  className="glass rounded-2xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 card-hover hover:-translate-y-1 transition-all"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-8 h-8 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border)/0.5)] flex items-center justify-center text-sm font-bold text-[hsl(var(--muted-foreground))]">
-                      #{top3.length >= 3 ? i + 4 : i + 1}
-                    </div>
-                    <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 shadow-md">
-                      {profile.avatar_url || profile.logo_url ? <img src={profile.avatar_url || profile.logo_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(profile.full_name || profile.name)}
-                    </div>
+                  <div className="w-8 h-8 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border)/0.5)] flex items-center justify-center text-xs sm:text-sm font-bold text-[hsl(var(--muted-foreground))] flex-shrink-0">
+                    #{top3.length >= 3 ? i + 4 : i + 1}
                   </div>
                   
-                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold truncate flex items-center gap-1.5">
-                        {profile.full_name || profile.name}
-                        {scope !== 'club_ranking' && profile.is_verified && <VerifiedBadge type={profile.verification_type} />}
-                      </p>
-                      <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 truncate">{profile.department || profile.category || 'Unknown'}</p>
-                    </div>
-                    
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 shadow-md">
+                    {profile.avatar_url || profile.logo_url ? <img src={profile.avatar_url || profile.logo_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(profile.full_name || profile.name)}
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate flex items-center gap-1.5">
+                      {profile.full_name || profile.name}
+                      {scope !== 'club_ranking' && profile.is_verified && <VerifiedBadge type={profile.verification_type} />}
+                    </p>
+                    <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 truncate">{profile.department || profile.category || 'Unknown'}</p>
                     {scope !== 'club_ranking' && (
-                      <div className="w-full sm:w-32 flex-shrink-0 flex justify-start sm:justify-center">
-                        <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
+                      <div className="sm:hidden mt-1.5">
+                        <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-[9px] font-bold uppercase tracking-wider whitespace-nowrap">
                           {getStageTitle(currentLevel)}
                         </span>
                       </div>
                     )}
-                    
-                    <div className="w-full sm:w-24 text-left sm:text-right flex-shrink-0">
-                      <p className="text-lg font-black text-blue-400">{scope === 'club_ranking' ? profile.total_score : xpPoints.toLocaleString()}</p>
-                      <p className="text-[10px] uppercase font-bold text-[hsl(var(--muted-foreground))]">{scope === 'club_ranking' ? 'PTS' : 'XP'}</p>
+                  </div>
+                  
+                  {scope !== 'club_ranking' && (
+                    <div className="hidden sm:flex w-24 sm:w-32 flex-shrink-0 justify-center">
+                      <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
+                        {getStageTitle(currentLevel)}
+                      </span>
                     </div>
+                  )}
+                  
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-base sm:text-lg font-black text-blue-400 leading-none">{scope === 'club_ranking' ? profile.total_score : xpPoints.toLocaleString()}</p>
+                    <p className="text-[10px] uppercase font-bold text-[hsl(var(--muted-foreground))] mt-1">{scope === 'club_ranking' ? 'PTS' : 'XP'}</p>
                   </div>
                 </Link>
               )

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback } from '@/actions/events'
+import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner } from '@/actions/events'
 import { fetchEventCertificates, issueCertificate } from '@/actions/certificates'
 import { sendEventBroadcast, getEventBroadcasts } from '@/actions/communications'
 import { getEventReport } from '@/actions/ai'
@@ -20,7 +20,9 @@ export default function ManageEventPage() {
 
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'scanner' | 'volunteers' | 'certificates' | 'teams' | 'winners' | 'broadcast'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'settings' | 'scanner' | 'volunteers' | 'certificates' | 'teams' | 'winners' | 'broadcast' | 'daily-attendance'>('overview')
+  const [isScannerOnly, setIsScannerOnly] = useState(false)
+  const [isUpdatingBanner, setIsUpdatingBanner] = useState(false)
 
   // Volunteers State
   const [volunteers, setVolunteers] = useState<any[]>([])
@@ -62,6 +64,12 @@ export default function ManageEventPage() {
   const [broadcastForm, setBroadcastForm] = useState({ title: '', content: '', message_type: 'general' })
   const [sendingBroadcast, setSendingBroadcast] = useState(false)
 
+  // Daily Attendance State
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [dailyLogs, setDailyLogs] = useState<any[]>([])
+  const [allRegistrations, setAllRegistrations] = useState<any[]>([])
+  const [loadingDaily, setLoadingDaily] = useState(false)
+
   useEffect(() => {
     async function load() {
       const result = await fetchEvent(eventId)
@@ -71,10 +79,25 @@ export default function ManageEventPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       
-      // Ensure organizer
-      if (!user || user.id !== result.event.organizer_id) {
+      // Check access
+      let isOrg = user?.id === result.event.organizer_id
+      let isScan = false
+
+      if (user && !isOrg) {
+        const { data: vol } = await supabase.from('event_volunteers').select('can_scan').eq('event_id', eventId).eq('user_id', user.id).eq('status', 'approved').maybeSingle()
+        if (vol?.can_scan) {
+          isScan = true
+        }
+      }
+
+      if (!isOrg && !isScan) {
         router.push(`/events/${eventId}`)
         return
+      }
+
+      if (isScan && !isOrg) {
+        setIsScannerOnly(true)
+        setActiveTab('scanner')
       }
 
       setEvent(result.event)
@@ -138,7 +161,18 @@ export default function ManageEventPage() {
         setLoadingBroadcasts(false)
       }).catch(() => setLoadingBroadcasts(false))
     }
-  }, [activeTab, eventId, event?.is_team_event])
+    if (activeTab === 'daily-attendance') {
+      setLoadingDaily(true)
+      Promise.all([
+        fetchAllEventRegistrations(eventId),
+        fetchDailyAttendanceLogs(eventId, selectedDate)
+      ]).then(([regs, logs]) => {
+        setAllRegistrations(regs.registrations || [])
+        setDailyLogs(logs.logs || [])
+        setLoadingDaily(false)
+      })
+    }
+  }, [activeTab, eventId, event?.is_team_event, selectedDate])
 
   async function handleProcessVolunteer(volId: string, status: 'approved' | 'rejected') {
     const res = await processVolunteer(volId, status)
@@ -148,6 +182,16 @@ export default function ManageEventPage() {
       toast.success(`Volunteer ${status}`)
     }
   }
+
+  async function handleToggleScannerAccess(volId: string, currentStatus: boolean) {
+    const res = await updateVolunteerAccess(volId, !currentStatus)
+    if (res.error) toast.error(res.error)
+    else {
+      setVolunteers(prev => prev.map(v => v.id === volId ? { ...v, can_scan: !currentStatus } : v))
+      toast.success(!currentStatus ? 'Scanner access granted' : 'Scanner access revoked')
+    }
+  }
+
 
   async function handleScan(text: string) {
     try {
@@ -180,6 +224,40 @@ export default function ManageEventPage() {
       fetchEventCertificates(eventId).then(r => setCertificates(r.certificates || []))
     }
   }
+
+  async function handleUpdateCategory(newCategory: string) {
+    const res = await updateEventCategory(eventId, newCategory)
+    if (res.error) toast.error(res.error)
+    else {
+      setEvent({ ...event, category: newCategory })
+      toast.success('Event category updated successfully!')
+    }
+  }
+
+  async function handleUpdateBanner(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB')
+      return
+    }
+
+    setIsUpdatingBanner(true)
+    const formData = new FormData()
+    formData.append('banner', file)
+    
+    const res = await updateEventBanner(eventId, formData)
+    setIsUpdatingBanner(false)
+    
+    if (res.error) {
+      toast.error(res.error)
+    } else {
+      toast.success('Banner updated successfully!')
+      setEvent((prev: any) => ({ ...prev, banner_url: res.banner_url }))
+    }
+  }
+
 
   async function handleIssueAllCertificates(type: 'participants' | 'volunteers') {
     setIssuingAllCerts(true)
@@ -401,29 +479,48 @@ export default function ManageEventPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 p-1 glass rounded-xl overflow-x-auto">
-        <button onClick={() => setActiveTab('overview')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'overview' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>Overview</button>
-        <button onClick={() => setActiveTab('scanner')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'scanner' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
-          <div className="flex items-center justify-center gap-2"><QrCode className="w-4 h-4" /> QR Scanner</div>
-        </button>
-        <button onClick={() => setActiveTab('volunteers')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'volunteers' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
-          <div className="flex items-center justify-center gap-2"><HandHeart className="w-4 h-4" /> Volunteers</div>
-        </button>
-        <button onClick={() => setActiveTab('certificates')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'certificates' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
-          <div className="flex items-center justify-center gap-2"><Award className="w-4 h-4" /> Certificates</div>
-        </button>
-        {event.is_team_event && (
-          <button onClick={() => setActiveTab('teams')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'teams' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
-            <div className="flex items-center justify-center gap-2"><Users className="w-4 h-4" /> Teams</div>
+      {!isScannerOnly && (
+        <div className="flex gap-2 p-1 glass rounded-xl overflow-x-auto">
+          <button onClick={() => setActiveTab('overview')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'overview' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>Overview</button>
+          <button onClick={() => setActiveTab('settings')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'settings' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+            <div className="flex items-center justify-center gap-2"><Settings className="w-4 h-4" /> Settings</div>
           </button>
-        )}
-        <button onClick={() => setActiveTab('winners')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'winners' ? 'bg-amber-500 text-white shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
-          <div className="flex items-center justify-center gap-2"><Trophy className="w-4 h-4" /> Winners</div>
-        </button>
-        <button onClick={() => setActiveTab('broadcast')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'broadcast' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
-          <div className="flex items-center justify-center gap-2"><Megaphone className="w-4 h-4" /> Broadcast</div>
-        </button>
-      </div>
+          <button onClick={() => setActiveTab('scanner')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'scanner' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+            <div className="flex items-center justify-center gap-2"><QrCode className="w-4 h-4" /> QR Scanner</div>
+          </button>
+          <button onClick={() => setActiveTab('volunteers')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'volunteers' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+            <div className="flex items-center justify-center gap-2"><HandHeart className="w-4 h-4" /> Volunteers</div>
+          </button>
+          <button onClick={() => setActiveTab('certificates')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'certificates' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+            <div className="flex items-center justify-center gap-2"><Award className="w-4 h-4" /> Certificates</div>
+          </button>
+          {event.is_team_event && (
+            <button onClick={() => setActiveTab('teams')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'teams' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+              <div className="flex items-center justify-center gap-2"><Users className="w-4 h-4" /> Teams</div>
+            </button>
+          )}
+          {(!event?.category || event.category === 'competitive') && (
+            <button onClick={() => setActiveTab('winners')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'winners' ? 'bg-amber-500 text-white shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+              <div className="flex items-center justify-center gap-2"><Trophy className="w-4 h-4" /> Winners</div>
+            </button>
+          )}
+          <button onClick={() => setActiveTab('broadcast')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'broadcast' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+            <div className="flex items-center justify-center gap-2"><Megaphone className="w-4 h-4" /> Broadcast</div>
+          </button>
+          {event?.require_daily_attendance && (
+            <button onClick={() => setActiveTab('daily-attendance')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'daily-attendance' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+              <div className="flex items-center justify-center gap-2"><ClipboardCheck className="w-4 h-4" /> Daily Checks</div>
+            </button>
+          )}
+        </div>
+      )}
+      {isScannerOnly && (
+        <div className="flex gap-2 p-1 glass rounded-xl overflow-x-auto">
+          <button className="flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap bg-[hsl(var(--background))] shadow-sm">
+            <div className="flex items-center justify-center gap-2"><QrCode className="w-4 h-4" /> QR Scanner</div>
+          </button>
+        </div>
+      )}
 
       <div className="glass rounded-2xl p-6 min-h-[400px]">
         {activeTab === 'overview' && (
@@ -657,6 +754,73 @@ export default function ManageEventPage() {
           </div>
         )}
 
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
+              <Settings className="w-6 h-6 text-blue-500" /> Event Settings
+            </h2>
+            <div className="max-w-md space-y-6">
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Event Category</label>
+                <div className="relative">
+                  <select
+                    value={event.category || 'competitive'}
+                    onChange={(e) => handleUpdateCategory(e.target.value)}
+                    className="w-full pl-4 pr-10 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all appearance-none text-sm"
+                  >
+                    <option value="competitive">Competitive</option>
+                    <option value="workshop">Workshop</option>
+                    <option value="seminar">Seminar</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))] pointer-events-none" />
+                </div>
+                <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2">Only Competitive events have a Winner Leaderboard section.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Event Banner</label>
+                <div className="relative border-2 border-dashed border-[hsl(var(--border))] rounded-xl p-4 text-center hover:bg-[hsl(var(--muted)/0.5)] transition-colors cursor-pointer" onClick={() => document.getElementById('banner-update-upload')?.click()}>
+                  {isUpdatingBanner ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                      <span className="text-sm text-[hsl(var(--muted-foreground))]">Uploading...</span>
+                    </div>
+                  ) : (
+                    <>
+                      {event.banner_url ? (
+                        <div className="w-full h-32 relative rounded-lg overflow-hidden mb-3">
+                          <img src={event.banner_url} alt="Current banner" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <span className="text-white text-sm font-medium bg-black/50 px-3 py-1.5 rounded-full">Click to Change</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-3">
+                          <ImagePlus className="w-6 h-6 text-blue-500" />
+                        </div>
+                      )}
+                      {!event.banner_url && (
+                        <>
+                          <p className="text-sm font-medium mb-1">Click to upload a new banner</p>
+                          <p className="text-xs text-[hsl(var(--muted-foreground))]">PNG, JPG, WEBP up to 5MB</p>
+                        </>
+                      )}
+                    </>
+                  )}
+                  <input
+                    id="banner-update-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleUpdateBanner}
+                    disabled={isUpdatingBanner}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'scanner' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
@@ -731,9 +895,22 @@ export default function ManageEventPage() {
                           <button onClick={() => handleProcessVolunteer(v.id, 'rejected')} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20"><X className="w-4 h-4" /></button>
                         </>
                       ) : (
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${v.status === 'approved' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                          {v.status.toUpperCase()}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          {v.status === 'approved' && (
+                            <label className="flex items-center gap-2 cursor-pointer bg-[hsl(var(--background))] px-3 py-1.5 rounded-lg border border-[hsl(var(--border)/0.5)]">
+                              <span className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Scanner Access</span>
+                              <input 
+                                type="checkbox" 
+                                checked={!!v.can_scan}
+                                onChange={() => handleToggleScannerAccess(v.id, !!v.can_scan)}
+                                className="w-3.5 h-3.5 rounded border-[hsl(var(--border))] text-blue-500 focus:ring-blue-500/20 bg-[hsl(var(--muted))]"
+                              />
+                            </label>
+                          )}
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${v.status === 'approved' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                            {v.status.toUpperCase()}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1072,6 +1249,102 @@ export default function ManageEventPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+        {activeTab === 'daily-attendance' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-blue-500" /> Daily Attendance</h3>
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">Track check-ins and check-outs for each day.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="date" 
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  min={event.start_date.split('T')[0]}
+                  max={event.end_date.split('T')[0]}
+                  className="px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                />
+                <button 
+                  onClick={() => window.open(`/api/events/${eventId}/attendance-csv?date=${selectedDate}`, '_blank')}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium transition-colors"
+                >
+                  <Download className="w-4 h-4" /> Export Today
+                </button>
+              </div>
+            </div>
+
+            {loadingDaily ? (
+              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 bg-[hsl(var(--muted))] rounded-xl animate-pulse" />)}</div>
+            ) : allRegistrations.length === 0 ? (
+              <p className="text-sm text-[hsl(var(--muted-foreground))] p-4 bg-[hsl(var(--muted)/0.3)] rounded-xl text-center">No participants registered yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {allRegistrations.map((reg: any) => {
+                  const log = dailyLogs.find(l => l.user_id === reg.user_id)
+                  const hasCheckedIn = !!log?.check_in_time
+                  const hasCheckedOut = !!log?.check_out_time
+
+                  return (
+                    <div key={reg.user_id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center font-bold text-xs text-[hsl(var(--muted-foreground))]">
+                          {getInitials(reg.profiles?.full_name)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{reg.profiles?.full_name}</p>
+                          <p className="text-xs text-[hsl(var(--muted-foreground))]">Roll No: {reg.profiles?.roll_no || 'N/A'}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        {!hasCheckedIn ? (
+                          <button 
+                            onClick={async () => {
+                              const res = await markDailyCheckIn(eventId, reg.user_id, selectedDate)
+                              if (res.error) toast.error(res.error)
+                              else {
+                                toast.success('Checked In')
+                                setDailyLogs([...dailyLogs, { user_id: reg.user_id, date: selectedDate, check_in_time: res.check_in_time }])
+                              }
+                            }}
+                            className="flex-1 sm:flex-none px-4 py-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-lg text-xs font-bold transition-colors text-center"
+                          >
+                            Check In
+                          </button>
+                        ) : (
+                          <span className="flex-1 sm:flex-none px-4 py-2 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] rounded-lg text-xs font-bold text-center border border-[hsl(var(--border))]">
+                            In: {new Date(log.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+
+                        {!hasCheckedOut && hasCheckedIn ? (
+                          <button 
+                            onClick={async () => {
+                              const res = await markDailyCheckOut(eventId, reg.user_id, selectedDate)
+                              if (res.error) toast.error(res.error)
+                              else {
+                                toast.success('Checked Out')
+                                setDailyLogs(dailyLogs.map(l => l.user_id === reg.user_id ? { ...l, check_out_time: res.check_out_time } : l))
+                              }
+                            }}
+                            className="flex-1 sm:flex-none px-4 py-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-lg text-xs font-bold transition-colors text-center"
+                          >
+                            Check Out
+                          </button>
+                        ) : hasCheckedOut ? (
+                          <span className="flex-1 sm:flex-none px-4 py-2 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] rounded-lg text-xs font-bold text-center border border-[hsl(var(--border))]">
+                            Out: {new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

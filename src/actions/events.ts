@@ -335,6 +335,12 @@ export async function createEvent(formData: FormData) {
   
   const is_team_event = formData.get('is_team_event') === 'on'
   const is_club_only = formData.get('is_club_only') === 'on'
+  const require_daily_attendance = formData.get('require_daily_attendance') === 'on'
+  const faculty_coordinators_str = formData.get('faculty_coordinators') as string
+  const faculty_coordinators = faculty_coordinators_str 
+    ? faculty_coordinators_str.split(',').map(s => s.trim()).filter(Boolean)
+    : []
+  const category = formData.get('category') as string || 'competitive'
   const min_team_size = parseInt(formData.get('min_team_size') as string) || 1
   const max_team_size = parseInt(formData.get('max_team_size') as string) || null
 
@@ -362,7 +368,8 @@ export async function createEvent(formData: FormData) {
       title, description, location, start_date, end_date,
       club_id, organizer_id: user.id, max_attendees,
       organizer_name, banner_url,
-      is_team_event, min_team_size, max_team_size, is_club_only
+      is_team_event, min_team_size, max_team_size, is_club_only,
+      require_daily_attendance, faculty_coordinators, category
     } as any)
     .select()
     .single()
@@ -379,6 +386,50 @@ export async function createEvent(formData: FormData) {
   } as any)
 
   return { data }
+}
+
+export async function updateEventCategory(eventId: string, category: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Check if organizer
+  const { data: event } = await supabase.from('events').select('organizer_id').eq('id', eventId).single()
+  if (event?.organizer_id !== user.id) return { error: 'Only the organizer can update settings' }
+
+  const { error } = await supabase.from('events').update({ category } as any).eq('id', eventId)
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function updateEventBanner(eventId: string, formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Check if organizer
+  const { data: event } = await supabase.from('events').select('organizer_id').eq('id', eventId).single()
+  if (event?.organizer_id !== user.id) return { error: 'Only the organizer can update the banner' }
+
+  const banner = formData.get('banner') as File | null
+  if (!banner || banner.size === 0) return { error: 'No banner provided' }
+
+  const fileExt = banner.name.split('.').pop()
+  const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`
+  
+  const { error: uploadError } = await supabase.storage
+    .from('event_banners')
+    .upload(fileName, banner)
+    
+  if (uploadError) return { error: 'Failed to upload banner: ' + uploadError.message }
+  
+  const { data: { publicUrl } } = supabase.storage
+    .from('event_banners')
+    .getPublicUrl(fileName)
+    
+  const { error } = await supabase.from('events').update({ banner_url: publicUrl } as any).eq('id', eventId)
+  if (error) return { error: error.message }
+  return { success: true, banner_url: publicUrl }
 }
 
 export async function volunteerForEvent(eventId: string) {
@@ -463,6 +514,21 @@ export async function processVolunteer(volunteerId: string, status: 'approved' |
 
   return { success: true }
 }
+
+export async function updateVolunteerAccess(volunteerId: string, canScan: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+  
+  const { error } = await supabase
+    .from('event_volunteers')
+    .update({ can_scan: canScan } as any)
+    .eq('id', volunteerId)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
 
 export async function checkInAttendee(eventId: string, targetUserId: string) {
   const supabase = await createClient()
@@ -710,4 +776,69 @@ export async function submitEventFeedback(eventId: string, payload: {
   await awardCC(user.id, 10, 'Event Feedback Submission')
 
   return { success: true }
+}
+
+// --- Daily Attendance ---
+
+export async function fetchDailyAttendanceLogs(eventId: string, date: string) {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('event_daily_attendance')
+    .select('*, profiles(full_name, roll_no, email, avatar_url, department)')
+    .eq('event_id', eventId)
+    .eq('date', date)
+
+  if (error) return { error: error.message, logs: [] }
+  return { logs: data || [] }
+}
+
+export async function markDailyCheckIn(eventId: string, targetUserId: string, date: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const now = new Date().toISOString()
+  
+  const { error } = await supabase
+    .from('event_daily_attendance')
+    .upsert({
+      event_id: eventId,
+      user_id: targetUserId,
+      date: date,
+      check_in_time: now
+    }, { onConflict: 'event_id, user_id, date' })
+
+  if (error) return { error: error.message }
+  
+  // Create a base check-in record in event_attendees as well for overall metrics
+  await (supabase.from('event_attendees') as any).upsert({ 
+    event_id: eventId, 
+    user_id: targetUserId 
+  }, { onConflict: 'event_id, user_id' })
+
+  return { success: true, check_in_time: now }
+}
+
+export async function markDailyCheckOut(eventId: string, targetUserId: string, date: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const now = new Date().toISOString()
+  
+  // We only update check_out_time if the record already exists (meaning they checked in)
+  // Or upsert if we want to allow check-out without check-in
+  const { error } = await supabase
+    .from('event_daily_attendance')
+    .upsert({
+      event_id: eventId,
+      user_id: targetUserId,
+      date: date,
+      check_out_time: now
+    }, { onConflict: 'event_id, user_id, date' })
+
+  if (error) return { error: error.message }
+
+  return { success: true, check_out_time: now }
 }

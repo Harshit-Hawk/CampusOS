@@ -189,8 +189,12 @@ export default function EventDetailPage() {
       </button>
 
       <div className="glass rounded-2xl overflow-hidden animate-fade-in">
-        <div className="h-48 gradient-accent relative">
-          {event.banner_url && <img src={event.banner_url} alt="" className="w-full h-full object-cover" />}
+        <div className={`h-48 relative ${event.banner_url ? 'bg-[hsl(var(--muted))] flex items-center justify-center' : 'gradient-accent'}`}>
+          <img 
+            src={event.banner_url || '/default-event-banner.png'} 
+            alt="" 
+            className={`w-full h-full ${event.banner_url ? 'object-contain' : 'object-cover'}`} 
+          />
         </div>
 
         <div className="p-6">
@@ -374,7 +378,7 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {winners.length > 0 && (
+          {winners.length > 0 && (!event.category || event.category === 'competitive') && (
             <div className="glass rounded-2xl p-6">
               <h2 className="text-lg font-bold mb-6 flex items-center gap-2"><Trophy className="w-5 h-5 text-amber-500" /> Event Leaderboard</h2>
               <div className="space-y-4">

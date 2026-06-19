@@ -29,89 +29,106 @@ function EventSlide({ event, isActive }: { event: EventBannerType, isActive: boo
     return () => clearInterval(timer)
   }, [isActive, event.target_date])
 
+  const hasInfo = !!(event.title || event.subtitle || event.badge || event.date_text || event.time_text || event.location || event.going_count > 0 || timeLeft)
+
   return (
-    <div className="relative w-full shrink-0 snap-center overflow-hidden">
+    <div className="relative w-full shrink-0 snap-center overflow-hidden bg-black/5 dark:bg-black flex flex-col justify-center">
       {/* Background Image & Overlay */}
-      <div 
-        className={cn(
-          "absolute inset-0 bg-cover bg-center transition-transform duration-1000",
-          isActive ? "scale-105" : "scale-100"
-        )}
-        style={{ backgroundImage: `url("${event.image_url}")` }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-r from-gray-950/95 via-gray-900/80 to-transparent" />
-      <div className="absolute inset-0 bg-[hsl(var(--primary)/0.15)] mix-blend-overlay" />
+      {hasInfo && (
+        <>
+          <div 
+            className={cn(
+              "absolute inset-0 bg-cover bg-center transition-transform duration-1000",
+              isActive ? "scale-105" : "scale-100"
+            )}
+            style={{ backgroundImage: `url("${event.image_url}")` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-950/95 via-gray-900/80 to-transparent" />
+          <div className="absolute inset-0 bg-[hsl(var(--primary)/0.15)] mix-blend-overlay" />
+        </>
+      )}
 
       {/* Content */}
-      <div className="relative z-10 p-6 sm:p-8 flex flex-col md:flex-row md:items-end justify-between gap-6 min-h-[280px]">
-        
-        <div className="flex-1 space-y-4 sm:space-y-6">
-          <div className="space-y-2 sm:space-y-4">
-            {event.badge && <span className="inline-block px-3 py-1 bg-[hsl(var(--primary))] rounded text-[10px] font-bold tracking-widest text-primary-foreground uppercase shadow-sm">{event.badge}</span>}
-            {event.title && <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white leading-tight">{event.title}</h2>}
-            {event.subtitle && <p className="text-base sm:text-lg text-gray-200 max-w-xl">{event.subtitle}</p>}
-          </div>
+      {hasInfo ? (
+        <div className="relative z-10 p-6 sm:p-8 flex flex-col md:flex-row md:items-end justify-between gap-6 min-h-[280px]">
+          
+          <div className="flex-1 space-y-4 sm:space-y-6">
+            <div className="space-y-2 sm:space-y-4">
+              {event.badge && <span className="inline-block px-3 py-1 bg-[hsl(var(--primary))] rounded text-[10px] font-bold tracking-widest text-primary-foreground uppercase shadow-sm">{event.badge}</span>}
+              {event.title && <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white leading-tight">{event.title}</h2>}
+              {event.subtitle && <p className="text-base sm:text-lg text-gray-200 max-w-xl">{event.subtitle}</p>}
+            </div>
 
-          {/* Details */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 text-sm font-medium text-gray-300">
-            {(event.date_text || event.time_text) && (
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[hsl(var(--primary)/0.8)]" />
-                <span>{event.date_text} {event.date_text && event.time_text ? <>&nbsp;&bull;&nbsp;</> : ''} {event.time_text}</span>
+            {/* Details */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 text-sm font-medium text-gray-300">
+              {(event.date_text || event.time_text) && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[hsl(var(--primary)/0.8)]" />
+                  <span>{event.date_text} {event.date_text && event.time_text ? <>&nbsp;&bull;&nbsp;</> : ''} {event.time_text}</span>
+                </div>
+              )}
+              {event.location && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[hsl(var(--primary)/0.8)]" />
+                  <span>{event.location}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Attendees */}
+            {event.going_count > 0 && (
+              <div className="flex items-center gap-3 pt-2">
+                <div className="flex -space-x-2">
+                  {[12, 32, 47, 5].map((img, i) => (
+                    <img 
+                      key={i} 
+                      src={`https://i.pravatar.cc/100?img=${img + parseInt(event.id.slice(0,8) || '0', 16)}`} 
+                      alt="" 
+                      className="w-8 h-8 rounded-full border-2 border-gray-900 object-cover" 
+                    />
+                  ))}
+                </div>
+                <span className="text-sm font-medium text-gray-400">+{event.going_count} going</span>
               </div>
             )}
-            {event.location && (
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[hsl(var(--primary)/0.8)]" />
-                <span>{event.location}</span>
-              </div>
-            )}
           </div>
 
-          {/* Attendees */}
-          {event.going_count > 0 && (
-            <div className="flex items-center gap-3 pt-2">
-              <div className="flex -space-x-2">
-                {[12, 32, 47, 5].map((img, i) => (
-                  <img 
-                    key={i} 
-                    src={`https://i.pravatar.cc/100?img=${img + parseInt(event.id.slice(0,8) || '0', 16)}`} 
-                    alt="" 
-                    className="w-8 h-8 rounded-full border-2 border-gray-900 object-cover" 
-                  />
-                ))}
+          {/* Right Section: Countdown */}
+          {timeLeft && (
+            <div className="flex flex-col md:items-end gap-6 shrink-0 bg-gray-950/40 p-4 rounded-xl backdrop-blur-sm border border-white/10">
+              <div className="space-y-2 text-center md:text-right w-full">
+                <span className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Starts In</span>
+                <div className="flex items-center justify-center md:justify-end gap-4 text-white">
+                  <div className="flex flex-col items-center">
+                    <span className="text-2xl sm:text-3xl font-bold font-mono">{String(timeLeft.days).padStart(2, '0')}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400">Days</span>
+                  </div>
+                  <span className="text-xl font-light text-gray-500 pb-4">:</span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-2xl sm:text-3xl font-bold font-mono">{String(timeLeft.hours).padStart(2, '0')}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400">Hrs</span>
+                  </div>
+                  <span className="text-xl font-light text-gray-500 pb-4">:</span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-2xl sm:text-3xl font-bold font-mono">{String(timeLeft.minutes).padStart(2, '0')}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400">Mins</span>
+                  </div>
+                </div>
               </div>
-              <span className="text-sm font-medium text-gray-400">+{event.going_count} going</span>
             </div>
           )}
+
         </div>
-
-        {/* Right Section: Countdown */}
-        {timeLeft && (
-          <div className="flex flex-col md:items-end gap-6 shrink-0 bg-gray-950/40 p-4 rounded-xl backdrop-blur-sm border border-white/10">
-            <div className="space-y-2 text-center md:text-right w-full">
-              <span className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Starts In</span>
-              <div className="flex items-center justify-center md:justify-end gap-4 text-white">
-                <div className="flex flex-col items-center">
-                  <span className="text-2xl sm:text-3xl font-bold font-mono">{String(timeLeft.days).padStart(2, '0')}</span>
-                  <span className="text-[10px] uppercase tracking-wider text-gray-400">Days</span>
-                </div>
-                <span className="text-xl font-light text-gray-500 pb-4">:</span>
-                <div className="flex flex-col items-center">
-                  <span className="text-2xl sm:text-3xl font-bold font-mono">{String(timeLeft.hours).padStart(2, '0')}</span>
-                  <span className="text-[10px] uppercase tracking-wider text-gray-400">Hrs</span>
-                </div>
-                <span className="text-xl font-light text-gray-500 pb-4">:</span>
-                <div className="flex flex-col items-center">
-                  <span className="text-2xl sm:text-3xl font-bold font-mono">{String(timeLeft.minutes).padStart(2, '0')}</span>
-                  <span className="text-[10px] uppercase tracking-wider text-gray-400">Mins</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </div>
+      ) : (
+        <img 
+          src={event.image_url} 
+          alt="Event Banner" 
+          className={cn(
+            "w-full h-auto object-contain transition-transform duration-1000",
+            isActive ? "scale-[1.02]" : "scale-100"
+          )}
+        />
+      )}
     </div>
   )
 }
