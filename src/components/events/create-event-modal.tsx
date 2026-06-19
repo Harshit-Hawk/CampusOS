@@ -27,6 +27,13 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
+
+    // Parse local datetime strings to ISO UTC strings based on user's timezone
+    const startDateStr = formData.get('start_date') as string
+    const endDateStr = formData.get('end_date') as string
+    if (startDateStr) formData.set('start_date', new Date(startDateStr).toISOString())
+    if (endDateStr) formData.set('end_date', new Date(endDateStr).toISOString())
+
     const result = await createEvent(formData)
     setLoading(false)
 

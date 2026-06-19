@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { getInitials, formatRelativeTime, cn } from '@/lib/utils'
 import { getStageTitle } from '@/lib/constants'
 import { VerifiedBadge } from '@/components/ui/verified-badge'
-import { MapPin, Calendar, Users, UserPlus, UserMinus, ArrowLeft, Loader2, Clock, HandHeart, Check, Settings, QrCode, X, Bookmark, Share2, Bell, Trophy, Megaphone, Star } from 'lucide-react'
+import { MapPin, Calendar, Users, UserPlus, UserMinus, ArrowLeft, Loader2, Clock, HandHeart, Check, Settings, QrCode, X, Bookmark, Share2, Bell, Trophy, Megaphone, Star, GraduationCap } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -30,6 +30,7 @@ export default function EventDetailPage() {
   const [announcements, setAnnouncements] = useState<any[]>([])
 
   const [isVolunteering, setIsVolunteering] = useState(false)
+  const [canScan, setCanScan] = useState(false)
 
   // Interaction State
   const [isBookmarked, setIsBookmarked] = useState(false)
@@ -63,7 +64,10 @@ export default function EventDetailPage() {
       if (user) {
         setUserId(user.id)
         const { data: vol } = await supabase.from('event_volunteers').select('*').eq('event_id', eventId).eq('user_id', user.id).single()
-        if (vol) setIsVolunteering(true)
+        if (vol) {
+          setIsVolunteering(true)
+          if (vol.can_scan && vol.status === 'approved') setCanScan(true)
+        }
       }
       
       setLoading(false)
@@ -209,6 +213,11 @@ export default function EventDetailPage() {
                   {bookmarkLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />}
                 </button>
               )}
+              {canScan && !isOrganizer && (
+                <Link href={`/events/${eventId}/manage`} className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-medium transition-colors">
+                  <QrCode className="w-4 h-4" /> Scan Tickets
+                </Link>
+              )}
               {isOrganizer && (
                 <Link href={`/events/${eventId}/manage`} className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors">
                   <Settings className="w-4 h-4" /> Manage
@@ -242,6 +251,21 @@ export default function EventDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Faculty Coordinators */}
+          {event.faculty_coordinators && event.faculty_coordinators.length > 0 && (
+            <div className="mt-4 p-4 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.5)]">
+              <p className="text-xs text-[hsl(var(--muted-foreground))] mb-3">Faculty Coordinator{event.faculty_coordinators.length > 1 ? 's' : ''}</p>
+              <div className="flex flex-wrap gap-2">
+                {event.faculty_coordinators.map((coordinator: string, idx: number) => (
+                  <span key={idx} className="text-sm font-medium px-3 py-1.5 bg-[hsl(var(--background))] border border-[hsl(var(--border)/0.5)] rounded-lg flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-blue-500" />
+                    {coordinator}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* User Actions */}
           {!isOrganizer && !isPast && (

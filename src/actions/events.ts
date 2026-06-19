@@ -402,6 +402,30 @@ export async function updateEventCategory(eventId: string, category: string) {
   return { success: true }
 }
 
+export async function updateEventTiming(eventId: string, start_date: string, end_date: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Must be admin or organizer
+  const [profileRes, eventRes] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('events').select('organizer_id').eq('id', eventId).single()
+  ])
+  
+  if (profileRes.data?.role !== 'admin' && eventRes.data?.organizer_id !== user.id) {
+    return { error: 'Unauthorized' }
+  }
+
+  const { error } = await supabase
+    .from('events')
+    .update({ start_date, end_date } as any)
+    .eq('id', eventId)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
 export async function updateEventBanner(eventId: string, formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -841,4 +865,52 @@ export async function markDailyCheckOut(eventId: string, targetUserId: string, d
   if (error) return { error: error.message }
 
   return { success: true, check_out_time: now }
+}
+
+export async function processSmartScan(eventId: string, targetUserId: string, date: string, mode: 'in' | 'out' = 'in') {
+  const supabase = await createClient()
+
+  if (mode === 'in') {
+    // Base check-in handles one-time event attendee registration, gamification, and notifications
+    await checkInAttendee(eventId, targetUserId)
+  }
+
+  // Daily Attendance Logic (always runs so check-in/out works for all events)
+  const now = new Date().toISOString()
+  
+  const { data: existingLog } = await supabase
+    .from('event_daily_attendance')
+    .select('*')
+    .eq('event_id', eventId)
+    .eq('user_id', targetUserId)
+    .eq('date', date)
+    .maybeSingle()
+
+  if (mode === 'in') {
+    if (!existingLog) {
+      const { error } = await supabase.from('event_daily_attendance').insert({
+        event_id: eventId,
+        user_id: targetUserId,
+        date: date,
+        check_in_time: now
+      })
+      if (error) return { error: error.message }
+      return { status: 'checked_in', time: now }
+    } else {
+      return { error: 'Already checked in for today!' }
+    }
+  } else {
+    // mode === 'out'
+    if (!existingLog) {
+      return { error: 'Cannot check out before checking in!' }
+    } else if (!existingLog.check_out_time) {
+      const { error } = await supabase.from('event_daily_attendance').update({
+        check_out_time: now
+      }).eq('id', existingLog.id)
+      if (error) return { error: error.message }
+      return { status: 'checked_out', time: now }
+    } else {
+      return { error: 'Already checked out for today!' }
+    }
+  }
 }

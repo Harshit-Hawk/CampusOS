@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner } from '@/actions/events'
+import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner, processSmartScan } from '@/actions/events'
 import { fetchEventCertificates, issueCertificate } from '@/actions/certificates'
 import { sendEventBroadcast, getEventBroadcasts } from '@/actions/communications'
 import { getEventReport } from '@/actions/ai'
 import { getInitials } from '@/lib/utils'
-import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode, Users, ChevronDown, ChevronUp, Download, Loader2, Trophy, Megaphone, Send, Sparkles, ImagePlus, Printer, FileText } from 'lucide-react'
+import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode, Users, ChevronDown, ChevronUp, Download, Loader2, Trophy, Megaphone, Send, Sparkles, ImagePlus, Printer, FileText, LogOut } from 'lucide-react'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -31,6 +31,7 @@ export default function ManageEventPage() {
   // Check-in State
   const [checkedInList, setCheckedInList] = useState<any[]>([])
   const [loadingCheckIn, setLoadingCheckIn] = useState(false)
+  const [scannerMode, setScannerMode] = useState<'in' | 'out'>('in')
 
   // Certificates State
   const [certificates, setCertificates] = useState<any[]>([])
@@ -118,8 +119,12 @@ export default function ManageEventPage() {
     }
     if (activeTab === 'scanner') {
       setLoadingCheckIn(true)
-      fetchEventAttendees(eventId).then(res => {
-        setCheckedInList(res.checkedIn || [])
+      Promise.all([
+        fetchEventAttendees(eventId),
+        fetchDailyAttendanceLogs(eventId, new Date().toISOString().split('T')[0])
+      ]).then(([attRes, logRes]) => {
+        setCheckedInList(attRes.checkedIn || [])
+        setDailyLogs(logRes.logs || [])
         setLoadingCheckIn(false)
       })
     }
@@ -198,13 +203,17 @@ export default function ManageEventPage() {
       const payload = JSON.parse(text)
       if (payload.eventId === eventId && payload.userId) {
         toast.info('Scanning ticket...')
-        const res = await checkInAttendee(eventId, payload.userId)
+        const date = new Date().toISOString().split('T')[0]
+        const res = await processSmartScan(eventId, payload.userId, date, scannerMode)
         if (res.error) {
-           if (res.error === 'User is already checked in') toast.warning('User already checked in!')
-           else toast.error(res.error)
+           toast.error(res.error)
         } else {
-           toast.success('Successfully checked in!')
+           if (res.status === 'checked_in') toast.success('Successfully checked in! ✅')
+           else if (res.status === 'checked_out') toast.success('Successfully checked out! 👋')
+           else if (res.status === 'already_completed') toast.warning('Attendance already completed for today!')
+           
            fetchEventAttendees(eventId).then(r => setCheckedInList(r.checkedIn || []))
+           fetchDailyAttendanceLogs(eventId, date).then(r => setDailyLogs(r.logs || []))
         }
       } else {
         toast.error('Invalid ticket for this event.')
@@ -328,12 +337,15 @@ export default function ManageEventPage() {
       
       const attendedUserIds = new Set(attendees.map((a: any) => a.user_id))
       
-      const headers = ['Name', 'Roll No', 'Email', 'Phone', 'Department', 'Course', 'Semester', 'Registered At', 'Attended', 'Team Name', 'Team Code']
+      const baseHeaders = ['Name', 'Roll No', 'Email', 'Phone', 'Department', 'Course', 'Semester', 'Registered At', 'Attended']
+      const headers = event.is_team_event ? [...baseHeaders, 'Team Name', 'Team Code'] : baseHeaders
+      
       const rows = registrations.map((reg: any) => {
         const p = reg.profiles || {}
         const t = reg.event_teams || {}
         const isAttended = attendedUserIds.has(reg.user_id) ? 'Yes' : 'No'
-        return [
+        
+        const baseRow = [
           p.full_name || 'N/A',
           p.roll_no || 'N/A',
           p.email || 'N/A',
@@ -342,10 +354,11 @@ export default function ManageEventPage() {
           p.course || 'N/A',
           p.semester || 'N/A',
           new Date(reg.registered_at).toLocaleString(),
-          isAttended,
-          t.name || 'N/A',
-          t.code || 'N/A'
-        ].map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+          isAttended
+        ]
+
+        const row = event.is_team_event ? [...baseRow, t.name || 'N/A', t.code || 'N/A'] : baseRow
+        return row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
       })
       
       const csvContent = [headers.join(','), ...rows].join('\n')
@@ -825,19 +838,38 @@ export default function ManageEventPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><QrCode className="w-5 h-5 text-blue-400" /> Scan Tickets</h3>
-              <div className="rounded-2xl overflow-hidden border-2 border-blue-500/20 shadow-xl shadow-blue-500/10">
+              
+              <div className="flex items-center justify-center mb-6 bg-[hsl(var(--muted)/0.5)] p-1.5 rounded-xl border border-[hsl(var(--border)/0.5)] w-full max-w-sm mx-auto relative overflow-hidden">
+                <button
+                  onClick={() => setScannerMode('in')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-bold transition-all relative z-10 ${scannerMode === 'in' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]'}`}
+                >
+                  <ClipboardCheck className="w-4 h-4" /> Check In
+                </button>
+                <button
+                  onClick={() => setScannerMode('out')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-bold transition-all relative z-10 ${scannerMode === 'out' ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]'}`}
+                >
+                  <LogOut className="w-4 h-4" /> Check Out
+                </button>
+              </div>
+
+              <div className={`rounded-2xl overflow-hidden border-2 shadow-xl transition-colors duration-300 ${scannerMode === 'in' ? 'border-emerald-500/30 shadow-emerald-500/10' : 'border-amber-500/30 shadow-amber-500/10'}`}>
                 <Scanner 
                   onScan={(result) => handleScan(result[0].rawValue)}
                   allowMultiple={false}
                 />
               </div>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-4 text-center">Point the camera at a student's CampusOS Ticket QR code to check them in.</p>
+              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-4 text-center">Point the camera at a student's CampusOS Ticket QR code to check them {scannerMode}.</p>
             </div>
             <div>
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-emerald-400" /> Recent Check-ins ({checkedInList.length})</h3>
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
+              <div className="space-y-3 max-h-[600px] overflow-y-auto pb-6 pr-2 scrollbar-thin">
                 {checkedInList.length === 0 && <p className="text-sm text-[hsl(var(--muted-foreground))]">No attendees checked in yet.</p>}
-                {checkedInList.map(a => (
+                {checkedInList.map(a => {
+                  const log = dailyLogs.find(l => l.user_id === a.user_id)
+                  
+                  return (
                   <div key={a.id} className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)] flex flex-col gap-3">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 text-emerald-500 font-bold text-sm">
@@ -867,8 +899,25 @@ export default function ManageEventPage() {
                         <span className="text-[10px] uppercase tracking-wider">Mobile</span>
                       </div>
                     </div>
+
+                    {log && (
+                      <div className="flex gap-2 w-full mt-1">
+                        {log.check_in_time && (
+                          <div className="flex-1 bg-emerald-500/10 text-emerald-500 rounded-lg px-3 py-1.5 text-xs font-semibold flex flex-col items-center border border-emerald-500/20">
+                            <span className="text-[9px] uppercase tracking-wider opacity-80 mb-0.5">In</span>
+                            <span>{new Date(log.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        )}
+                        {log.check_out_time && (
+                          <div className="flex-1 bg-amber-500/10 text-amber-500 rounded-lg px-3 py-1.5 text-xs font-semibold flex flex-col items-center border border-amber-500/20">
+                            <span className="text-[9px] uppercase tracking-wider opacity-80 mb-0.5">Out</span>
+                            <span>{new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           </div>
