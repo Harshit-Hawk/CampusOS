@@ -3,13 +3,17 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { getInitials } from '@/lib/utils'
-import { MapPin, Calendar, Users, UserPlus, UserMinus, ArrowLeft, Loader2, Clock, HandHeart, Check, Settings, QrCode, X, Bookmark, Share2, Bell, Trophy } from 'lucide-react'
+import { getInitials, formatRelativeTime, cn } from '@/lib/utils'
+import { getStageTitle } from '@/lib/constants'
+import { VerifiedBadge } from '@/components/ui/verified-badge'
+import { MapPin, Calendar, Users, UserPlus, UserMinus, ArrowLeft, Loader2, Clock, HandHeart, Check, Settings, QrCode, X, Bookmark, Share2, Bell, Trophy, Megaphone, Star } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { fetchEvent, registerForEvent, unregisterFromEvent, volunteerForEvent, toggleEventBookmark, toggleEventReminder, fetchEventWinners } from '@/actions/events'
+import { getEventAnnouncements } from '@/actions/communications'
 import { TeamRegistrationModal } from '@/components/events/team-registration-modal'
+import { EventFeedbackModal } from '@/components/events/event-feedback-modal'
 
 export default function EventDetailPage() {
   const params = useParams()
@@ -23,6 +27,7 @@ export default function EventDetailPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [winners, setWinners] = useState<any[]>([])
+  const [announcements, setAnnouncements] = useState<any[]>([])
 
   const [isVolunteering, setIsVolunteering] = useState(false)
 
@@ -35,6 +40,7 @@ export default function EventDetailPage() {
   // Modal State
   const [showQR, setShowQR] = useState(false)
   const [showTeamModal, setShowTeamModal] = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -48,6 +54,8 @@ export default function EventDetailPage() {
       
       const winnersRes = await fetchEventWinners(eventId)
       setWinners(winnersRes.winners || [])
+
+      getEventAnnouncements(eventId).then(data => setAnnouncements(data)).catch(() => {})
       
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
@@ -168,6 +176,14 @@ export default function EventDetailPage() {
         />
       )}
 
+      {showFeedbackModal && (
+        <EventFeedbackModal
+          eventId={eventId}
+          open={showFeedbackModal}
+          onClose={() => setShowFeedbackModal(false)}
+        />
+      )}
+
       <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
@@ -214,7 +230,10 @@ export default function EventDetailPage() {
                 {event.organizer_name ? (
                   <span className="text-sm font-medium">{event.organizer_name}</span>
                 ) : (
-                  <Link href={`/profile/${event.profiles?.roll_no}`} className="text-sm font-medium hover:underline">{event.profiles?.full_name}</Link>
+                  <Link href={`/profile/${event.profiles?.roll_no}`} className="text-sm font-medium hover:underline flex items-center gap-1.5">
+                    {event.profiles?.full_name}
+                    {event.profiles?.is_verified && <VerifiedBadge type={event.profiles?.verification_type} iconClassName="w-3.5 h-3.5" />}
+                  </Link>
                 )}
               </div>
             </div>
@@ -228,6 +247,11 @@ export default function EventDetailPage() {
                   <button onClick={() => setShowQR(true)} className="flex-1 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/20">
                     <QrCode className="w-4 h-4" /> View My Ticket
                   </button>
+                  {event.feedback_published && (
+                    <button onClick={() => setShowFeedbackModal(true)} className="flex-1 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 text-white shadow-lg shadow-purple-500/20">
+                      <Star className="w-4 h-4" /> Provide Feedback
+                    </button>
+                  )}
                   <button onClick={handleReminder} disabled={reminderLoading} className={`px-4 py-3 rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2 ${isReminded ? 'bg-blue-500/10 text-blue-400' : 'bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)]'}`}>
                     {reminderLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className={`w-4 h-4 ${isReminded ? 'fill-current' : ''}`} />}
                   </button>
@@ -306,7 +330,10 @@ export default function EventDetailPage() {
                     )}
                   </div>
                   <div className="text-sm font-medium">
-                    {member.profiles?.full_name}
+                    <span className="flex items-center gap-1.5">
+                      {member.profiles?.full_name}
+                      {member.profiles?.is_verified && <VerifiedBadge type={member.profiles?.verification_type} iconClassName="w-3.5 h-3.5" />}
+                    </span>
                     {member.user_id === userId && <span className="text-[10px] ml-2 text-[hsl(var(--muted-foreground))]">(You)</span>}
                   </div>
                 </Link>
@@ -324,6 +351,28 @@ export default function EventDetailPage() {
               {event.description}
             </p>
           </div>
+
+          {/* Announcements Section */}
+          {announcements.length > 0 && (
+            <div className="glass rounded-2xl p-6">
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Megaphone className="w-5 h-5 text-blue-500" /> Announcements
+              </h2>
+              <div className="space-y-4">
+                {announcements.map(a => (
+                  <div key={a.id} className="p-4 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.5)]">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-sm">{a.title}</h4>
+                      <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                        {a.sent_at ? new Date(a.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[hsl(var(--muted-foreground))] whitespace-pre-wrap">{a.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {winners.length > 0 && (
             <div className="glass rounded-2xl p-6">
@@ -347,7 +396,10 @@ export default function EventDetailPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-lg truncate text-[hsl(var(--foreground))]">
-                          {winner.team_id ? winner.event_teams?.name : winner.profiles?.full_name}
+                          <span className="flex items-center gap-1.5">
+                            {winner.team_id ? winner.event_teams?.name : winner.profiles?.full_name}
+                            {!winner.team_id && winner.profiles?.is_verified && <VerifiedBadge type={winner.profiles?.verification_type} iconClassName="w-3.5 h-3.5" />}
+                          </span>
                         </p>
                         <p className="text-sm opacity-80 truncate">
                           {winner.team_id ? `Team` : winner.profiles?.roll_no}

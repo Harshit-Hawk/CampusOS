@@ -17,8 +17,8 @@ export function DashboardShell({ profile, children }: DashboardShellProps) {
   return (
     <div className="min-h-screen">
       <Sidebar user={profile} mobileOpen={mobileMenuOpen} setMobileOpen={setMobileMenuOpen} />
-      <div className="lg:pl-[var(--sidebar-width)]">
-        <div className="w-full transition-transform duration-300 xl:-translate-x-[calc(var(--sidebar-width)/2)]">
+      <div className="lg:pl-[var(--sidebar-width)] xl:pr-[var(--sidebar-width)]">
+        <div className="w-full transition-transform duration-300">
           <Topbar user={profile} setMobileMenuOpen={setMobileMenuOpen} />
           <main className="p-4 lg:p-6 pb-24 lg:pb-6 min-h-[calc(100vh_-_var(--topbar-height))]">
             {children}

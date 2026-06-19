@@ -3,6 +3,41 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  
+  --color-secondary: hsl(var(--secondary));
+  
+  --color-accent: hsl(var(--accent));
+  
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  
+  --radius-xl: var(--radius);
+  --radius-2xl: calc(var(--radius) + 0.25rem);
+  --radius-3xl: calc(var(--radius) + 0.5rem);
+}
+
 :root {
   /* Brand Colors */
   --primary: 221 83% 53%; /* blue-600 */
@@ -107,6 +142,10 @@ body {
   background: linear-gradient(135deg, hsl(199 89% 48%), hsl(217 91% 60%));
 }
 
+.gradient-ai {
+  background: linear-gradient(135deg, hsl(221 83% 53%), hsl(270 70% 55%));
+}
+
 .gradient-mesh {
   background:
     radial-gradient(at 40% 20%, hsl(221 83% 53% / 0.1) 0px, transparent 50%),
@@ -125,6 +164,11 @@ body {
 @keyframes slide-in-right {
   from { opacity: 0; transform: translateX(16px); }
   to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes scale-in {
@@ -155,12 +199,28 @@ body {
   50% { transform: translateY(-6px); }
 }
 
+@keyframes diamond-sparkle {
+  0%, 100% { filter: brightness(1) hue-rotate(0deg); }
+  25% { filter: brightness(1.2) hue-rotate(10deg); }
+  50% { filter: brightness(1.4) hue-rotate(20deg); }
+  75% { filter: brightness(1.2) hue-rotate(10deg); }
+}
+
+@keyframes legend-glow {
+  0%, 100% { box-shadow: 0 0 15px hsl(0 72% 51% / 0.3), 0 0 30px hsl(270 70% 50% / 0.1); }
+  50% { box-shadow: 0 0 25px hsl(0 72% 51% / 0.5), 0 0 50px hsl(270 70% 50% / 0.2); }
+}
+
 .animate-fade-in {
   animation: fade-in 0.4s ease-out forwards;
 }
 
 .animate-slide-in-right {
   animation: slide-in-right 0.3s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-scale-in {
@@ -183,6 +243,14 @@ body {
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+.animate-diamond-sparkle {
+  animation: diamond-sparkle 3s ease-in-out infinite;
+}
+
+.animate-legend-glow {
+  animation: legend-glow 2s ease-in-out infinite;
 }
 
 /* Card hover effect */
@@ -217,7 +285,105 @@ body {
   box-shadow: 0 0 20px hsl(239 84% 67% / 0.3);
 }
 
-/* Rank Podium */
+/* Rank Tiers */
 .rank-gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
 .rank-silver { background: linear-gradient(135deg, #d1d5db, #9ca3af); }
 .rank-bronze { background: linear-gradient(135deg, #d97706, #b45309); }
+
+.rank-tier-bronze { background: linear-gradient(135deg, #CD7F32, #b45309); color: white; }
+.rank-tier-silver { background: linear-gradient(135deg, #C0C0C0, #9ca3af); color: white; }
+.rank-tier-gold { background: linear-gradient(135deg, #FFD700, #f59e0b); color: white; }
+.rank-tier-platinum { background: linear-gradient(135deg, #E5E4E2, #a8a29e); color: #333; }
+.rank-tier-diamond {
+  background: linear-gradient(135deg, #B9F2FF, #67e8f9, #B9F2FF);
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  color: #0e7490;
+}
+.rank-tier-legend {
+  background: linear-gradient(135deg, #FF6B6B, #a855f7, #FF6B6B);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+  color: white;
+  animation: legend-glow 2s ease-in-out infinite, shimmer 2s linear infinite;
+}
+
+/* AI Chat Bubble */
+.ai-bubble {
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-bubble::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, hsl(221 83% 53% / 0.05), transparent);
+  animation: shimmer 3s linear infinite;
+}
+
+/* Marketplace Card Image Hover */
+.marketplace-img-hover:hover img {
+  transform: scale(1.05);
+  transition: transform 0.3s ease;
+}
+
+/* Portfolio Section */
+.portfolio-section {
+  position: relative;
+}
+
+.portfolio-section::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, hsl(221 83% 53%), hsl(270 70% 55%));
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.portfolio-section:hover::before {
+  opacity: 1;
+}
+
+/* Prose overrides for AI chat */
+.prose-chat {
+  --tw-prose-body: hsl(var(--foreground));
+  --tw-prose-headings: hsl(var(--foreground));
+  --tw-prose-code: hsl(var(--foreground));
+}
+
+.prose-chat code {
+  background: hsl(var(--muted));
+  padding: 0.15em 0.4em;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+
+.prose-chat pre {
+  background: hsl(var(--muted));
+  border-radius: 0.75rem;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.prose-chat pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

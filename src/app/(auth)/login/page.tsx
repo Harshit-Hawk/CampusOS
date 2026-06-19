@@ -137,6 +137,7 @@ export default function LoginPage() {
   const [signUpEmail, setSignUpEmail] = useState('')
   const [signUpPassword, setSignUpPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const [username, setUsername] = useState('')
   const [rollNo, setRollNo] = useState('')
   const [mobileNumber, setMobileNumber] = useState('')
   const [department, setDepartment] = useState('')
@@ -170,7 +171,11 @@ export default function LoginPage() {
     
     const result = await signUp(formData)
     if (result?.error) {
-      setError(result.error)
+      if (result.error.includes('profiles_username_key')) {
+        setError('This username is already taken. Please choose another one.')
+      } else {
+        setError(result.error)
+      }
       setLoading(false)
     } else if (result?.success) {
       setSuccess(result.success)
@@ -424,6 +429,15 @@ export default function LoginPage() {
                     value={fullName}
                     onChange={(e: any) => setFullName(e.target.value)}
                     placeholder="John Doe" 
+                    required 
+                  />
+                  <Field 
+                    label="Username" 
+                    icon={User} 
+                    name="username"
+                    value={username}
+                    onChange={(e: any) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_.]/g, '').toLowerCase())}
+                    placeholder="johndoe123" 
                     required 
                   />
                   <Field 

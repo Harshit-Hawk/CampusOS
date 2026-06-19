@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { submitAssignment } from '@/actions/academic'
 import { fetchSubjectResources } from '@/actions/academic-resources'
-import { BookOpen, Calendar, CheckCircle, Clock, AlertTriangle, FileText, UploadCloud, ChevronRight, Check, ArrowLeft, CheckCircle2, XCircle, Loader2, Download, Link as LinkIcon } from 'lucide-react'
+import { BookOpen, Calendar, CheckCircle, Clock, AlertTriangle, FileText, UploadCloud, ChevronRight, ChevronLeft, Check, ArrowLeft, CheckCircle2, XCircle, Loader2, Download, Link as LinkIcon, MoreVertical, Coffee } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
@@ -61,45 +61,14 @@ export function StudentAcademicClient({ subjects, timetable, attendance, assignm
       </div>
 
       {activeTab === 'timetable' && (
-        <div className="glass rounded-2xl p-6">
-          <h2 className="text-lg font-semibold mb-6">Weekly Timetable</h2>
-          {timetable.length === 0 ? (
-            <EmptyState 
-              icon={Calendar} 
-              title="No timetable scheduled" 
-              description="Your timetable hasn't been published yet." 
-              className="py-8 bg-transparent shadow-none border-0"
-            />
-          ) : (
-            <div className="space-y-8">
-              {[1, 2, 3, 4, 5, 6].map(day => {
-                const dayName = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day-1]
-                const dayClasses = timetable.filter((t: any) => t.day_of_week === day).sort((a: any, b: any) => a.start_time.localeCompare(b.start_time))
-                if (dayClasses.length === 0) return null
-                return (
-                  <div key={day}>
-                    <h3 className="font-semibold text-blue-400 mb-3">{dayName}</h3>
-                    <div className="grid gap-3">
-                      {dayClasses.map((cls: any) => (
-                        <div key={cls.id} className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                          <div>
-                            <p className="font-semibold">{cls.subjects?.name} ({cls.subjects?.code})</p>
-                            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1 flex items-center gap-1">
-                              <Clock className="w-3 h-3" /> {cls.start_time.slice(0, 5)} - {cls.end_time.slice(0, 5)}
-                            </p>
-                          </div>
-                          <div className="px-3 py-1 rounded-lg bg-[hsl(var(--background))] text-xs font-medium border border-[hsl(var(--border))]">
-                            Room {cls.room || 'TBA'}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+        <>
+          <div className="hidden md:block">
+            <WeeklyTimetableGrid timetable={timetable} />
+          </div>
+          <div className="block md:hidden">
+            <MobileTimetableView timetable={timetable} />
+          </div>
+        </>
       )}
 
       {activeTab === 'attendance' && !selectedSubjectId && (
@@ -523,18 +492,18 @@ function DetailedAttendanceView({ stat, onBack }: { stat: any, onBack: () => voi
                   {stat.percentage.toFixed(1)}%
                 </div>
               </div>
-              <div className="space-y-3 flex-1">
-                <div className="flex justify-between items-center text-sm border-b border-[hsl(var(--border))] pb-1">
-                  <span className="font-semibold text-[hsl(var(--muted-foreground))]">Total Sessions</span>
-                  <span className="font-bold">{stat.total}</span>
+              <div className="space-y-4 flex-1">
+                <div className="flex justify-between items-center gap-4 text-[15px] border-b border-[hsl(var(--border)/0.6)] pb-2.5">
+                  <span className="font-bold text-slate-500 dark:text-slate-400">Total Sessions</span>
+                  <span className="font-black text-slate-800 dark:text-white">{stat.total}</span>
                 </div>
-                <div className="flex justify-between items-center text-sm border-b border-[hsl(var(--border))] pb-1">
-                  <span className="font-semibold text-[hsl(var(--muted-foreground))]">Present</span>
-                  <span className="font-bold text-blue-500">{stat.present}</span>
+                <div className="flex justify-between items-center gap-4 text-[15px] border-b border-[hsl(var(--border)/0.6)] pb-2.5">
+                  <span className="font-bold text-slate-500 dark:text-slate-400">Present</span>
+                  <span className="font-black text-blue-500">{stat.present}</span>
                 </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="font-semibold text-[hsl(var(--muted-foreground))]">Absent</span>
-                  <span className="font-bold text-rose-500">{stat.absent}</span>
+                <div className="flex justify-between items-center gap-4 text-[15px] pb-1">
+                  <span className="font-bold text-slate-500 dark:text-slate-400">Absent</span>
+                  <span className="font-black text-rose-500">{stat.absent}</span>
                 </div>
               </div>
             </div>
@@ -638,5 +607,384 @@ function DonutChart({ percentage, present, absent, strokeWidth = 15 }: { percent
         className="transition-all duration-1000 ease-out"
       />
     </svg>
+  )
+}
+
+function MobileTimetableView({ timetable }: { timetable: any[] }) {
+  const [selectedDayNum, setSelectedDayNum] = useState<number>(() => {
+    const d = new Date().getDay();
+    return d === 0 ? 1 : d; // Sunday -> Monday
+  });
+
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const now = new Date();
+  const currentDay = now.getDay();
+  const dist = currentDay === 0 ? 6 : currentDay - 1;
+  const monday = new Date(now.setDate(now.getDate() - dist));
+
+  // Determine current day info
+  const selectedDateObj = new Date(monday);
+  selectedDateObj.setDate(monday.getDate() + (selectedDayNum - 1));
+  const fullDayName = selectedDateObj.toLocaleDateString('en-GB', { weekday: 'long' });
+  const formattedDate = selectedDateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+  // Filter timetable
+  const todayClasses = timetable.filter(t => t.day_of_week === selectedDayNum).map(c => ({ ...c, type: 'class' }));
+  
+  // Create breaks
+  const breaks = [
+    { type: 'break', start_time: '11:20:00', end_time: '11:30:00', title: 'Break', subtitle: 'Tea Break' },
+    { type: 'break', start_time: '13:20:00', end_time: '14:05:00', title: 'Break', subtitle: 'Lunch Break' }
+  ];
+
+  // Combine and sort
+  const allItems = [...todayClasses, ...breaks].sort((a, b) => {
+    return a.start_time.localeCompare(b.start_time);
+  });
+
+  const formatTime = (timeStr: string) => {
+    const [h, m] = timeStr.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const disp = h % 12 === 0 ? 12 : h % 12;
+    return `${disp.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  const getPastelColor = (subjectCode: string) => {
+    const colors = [
+      { bg: 'bg-emerald-50 dark:bg-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-500' },
+      { bg: 'bg-blue-50 dark:bg-blue-500/20', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-500' },
+      { bg: 'bg-purple-50 dark:bg-purple-500/20', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-500' },
+      { bg: 'bg-orange-50 dark:bg-orange-500/20', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-500' },
+      { bg: 'bg-pink-50 dark:bg-pink-500/20', text: 'text-pink-700 dark:text-pink-300', border: 'border-pink-500' },
+      { bg: 'bg-indigo-50 dark:bg-indigo-500/20', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-500' },
+    ];
+    let hash = 0;
+    for (let i = 0; i < (subjectCode || '').length; i++) {
+      hash = subjectCode.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  return (
+    <div className="bg-white dark:bg-[hsl(var(--card))] rounded-2xl shadow-sm border border-[hsl(var(--border))] overflow-hidden flex flex-col">
+      {/* Horizontal Day Selector */}
+      <div className="flex overflow-x-auto gap-3 p-4 border-b border-[hsl(var(--border))] scrollbar-none items-center">
+        {days.map((day, i) => {
+          const dNum = i + 1;
+          const dDate = new Date(monday);
+          dDate.setDate(monday.getDate() + i);
+          const isSelected = selectedDayNum === dNum;
+          
+          return (
+            <button 
+              key={day}
+              onClick={() => setSelectedDayNum(dNum)}
+              className={cn(
+                "flex flex-col items-center justify-center min-w-[70px] py-3 rounded-2xl transition-colors border",
+                isSelected ? "bg-blue-600 border-blue-600 text-white shadow-md" : "bg-transparent border-[hsl(var(--border))] text-slate-700 dark:text-slate-300 hover:bg-[hsl(var(--muted))]"
+              )}
+            >
+              <span className="font-bold text-sm">{day}</span>
+              <span className={cn("text-xs font-medium mt-1", isSelected ? "text-blue-100" : "text-slate-500 dark:text-slate-400")}>
+                {dDate.getDate()} {dDate.toLocaleDateString('en-GB', { month: 'short' })}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Date Header */}
+      <div className="p-5 flex justify-between items-center border-b border-[hsl(var(--border))/0.5]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 flex items-center justify-center shrink-0">
+            <Calendar className="w-4 h-4" />
+          </div>
+          <h3 className="font-bold text-slate-900 dark:text-white leading-tight">{fullDayName}, {formattedDate}</h3>
+        </div>
+      </div>
+
+      {/* Schedule List */}
+      <div className="p-4 space-y-4">
+        {allItems.length === 0 ? (
+          <EmptyState icon={Calendar} title="No classes" description="You have a free day!" className="border-0 shadow-none bg-transparent" />
+        ) : (
+          allItems.map((item: any, idx: number) => {
+            if (item.type === 'break') {
+              return (
+                <div key={`break-${idx}`} className="flex items-stretch gap-4 p-3 rounded-xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)]">
+                  {/* Left Bar */}
+                  <div className="w-1 rounded-full bg-orange-300/50"></div>
+                  
+                  {/* Time */}
+                  <div className="flex flex-col justify-center min-w-[75px] text-xs font-bold text-slate-600 dark:text-slate-400">
+                    <span>{formatTime(item.start_time).replace(' AM', '').replace(' PM', '')} {formatTime(item.start_time).slice(-2)}</span>
+                    <span className="text-slate-400 font-normal my-0.5">-</span>
+                    <span>{formatTime(item.end_time).replace(' AM', '').replace(' PM', '')} {formatTime(item.end_time).slice(-2)}</span>
+                  </div>
+                  
+                  {/* Icon */}
+                  <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
+                    <Coffee className="w-6 h-6" />
+                  </div>
+                  
+                  {/* Info */}
+                  <div className="flex flex-col justify-center flex-1">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white">{item.title}</h4>
+                    <p className="text-xs font-medium text-slate-500 mt-0.5">{item.subtitle}</p>
+                  </div>
+                </div>
+              )
+            }
+
+            // Class
+            const subject = Array.isArray(item.subjects) ? item.subjects[0] : item.subjects;
+            const colors = getPastelColor(subject?.code);
+            const isLast = idx === allItems.length - 1;
+            
+            let endTimeStr = item.end_time;
+            if (!endTimeStr || endTimeStr === item.start_time) {
+              const [h, m] = item.start_time.split(':').map(Number);
+              const totalMins = h * 60 + m + 55;
+              const endH = Math.floor(totalMins / 60);
+              const endM = totalMins % 60;
+              endTimeStr = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}:00`;
+            }
+
+            return (
+              <div key={item.id} className="flex items-stretch gap-4 p-2 relative">
+                {/* Left Colored Bar */}
+                <div className={cn("w-1 rounded-full shrink-0", colors.bg.split(' ')[0], colors.border.replace('border-', 'bg-'))}></div>
+                
+                {/* Time */}
+                <div className="flex flex-col justify-start pt-1 min-w-[75px] text-xs font-bold text-slate-900 dark:text-slate-200">
+                  <span>{formatTime(item.start_time)}</span>
+                  <span className="text-slate-400 font-normal my-0.5">-</span>
+                  <span>{formatTime(endTimeStr)}</span>
+                </div>
+                
+                {/* Icon */}
+                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 mt-0.5", colors.bg, colors.text)}>
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                
+                {/* Info */}
+                <div className="flex flex-col flex-1 pb-4">
+                  <div className="flex justify-between items-start">
+                    <div className="pr-3">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-tight mb-1">{subject?.name || 'Unknown Subject'}</h4>
+                      {subject?.code && <p className="text-xs font-medium text-slate-500 mt-1 uppercase tracking-wider">{subject.code}</p>}
+                    </div>
+                    <button className="p-1 hover:bg-[hsl(var(--muted))] rounded-lg shrink-0 mt-[-4px] mr-[-4px]">
+                      <MoreVertical className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Divider Line (Except last item) */}
+                {!isLast && (
+                  <div className="absolute bottom-0 right-0 left-[110px] border-b border-[hsl(var(--border)/0.5)]"></div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </div>
+    </div>
+  )
+}
+
+function WeeklyTimetableGrid({ timetable }: { timetable: any[] }) {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  
+  // Hardcoded to match user's 6 lecture (55 min) schedule
+  const startMinutes = 9 * 60 + 30; // 09:30 AM
+  const endMinutes = 15 * 60 + 55; // 03:55 PM
+  const totalMinutes = endMinutes - startMinutes; // 385
+  const heightPerMinute = 2.2; // Increase scale slightly to fit better
+  const containerHeight = totalMinutes * heightPerMinute;
+
+  const timeToMinutes = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return (hours * 60 + minutes) - startMinutes;
+  }
+
+  const getPastelColor = (subjectCode: string) => {
+    const colors = [
+      'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30',
+      'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/30',
+      'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30',
+      'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/20 dark:text-orange-300 dark:border-orange-500/30',
+      'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/20 dark:text-pink-300 dark:border-pink-500/30',
+      'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30',
+    ]
+    let hash = 0
+    for (let i = 0; i < (subjectCode || '').length; i++) {
+      hash = subjectCode.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    return colors[Math.abs(hash) % colors.length]
+  }
+
+  // Exact period markers
+  const periods = [
+    { start: '09:30:00', end: '10:25:00', label: '09:30 - 10:25 AM' },
+    { start: '10:25:00', end: '11:20:00', label: '10:25 - 11:20 AM' },
+    { start: '11:30:00', end: '12:25:00', label: '11:30 - 12:25 PM' },
+    { start: '12:25:00', end: '13:20:00', label: '12:25 - 01:20 PM' },
+    { start: '14:05:00', end: '15:00:00', label: '02:05 - 03:00 PM' },
+    { start: '15:00:00', end: '15:55:00', label: '03:00 - 03:55 PM' }
+  ];
+
+  // Get start/end dates for "This Week"
+  const now = new Date()
+  const currentDay = now.getDay()
+  const dist = currentDay === 0 ? 6 : currentDay - 1 // Make Monday 0
+  const monday = new Date(now.setDate(now.getDate() - dist))
+  const saturday = new Date(monday)
+  saturday.setDate(monday.getDate() + 5)
+  
+  const formatDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  const dateRangeStr = `${formatDate(monday)} - ${formatDate(saturday)} ${saturday.getFullYear()}`
+
+  if (timetable.length === 0) {
+    return (
+      <div className="glass rounded-2xl p-6">
+        <EmptyState 
+          icon={Calendar} 
+          title="No timetable scheduled" 
+          description="Your timetable hasn't been published yet." 
+          className="py-8 bg-transparent shadow-none border-0"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white dark:bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-sm overflow-hidden flex flex-col">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-6 border-b border-[hsl(var(--border))] gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Timetable</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Your weekly class schedule.</p>
+        </div>
+        <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
+            <button className="px-4 py-2 bg-white dark:bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-[hsl(var(--muted))]">
+              This Week
+            </button>
+          </div>
+          <span className="text-xs font-medium text-slate-400">{dateRangeStr}</span>
+        </div>
+      </div>
+
+      {/* Grid Container */}
+      <div className="overflow-x-auto">
+        <div className="flex min-w-[800px] relative">
+          {/* Break Overlays (Spanning full width) */}
+          <div className="absolute right-0 bg-[hsl(var(--muted)/0.3)] dark:bg-[hsl(var(--muted)/0.1)] flex items-center justify-center pointer-events-none border-y border-[hsl(var(--border)/0.5)] overflow-hidden z-0" 
+               style={{ left: '112px', top: `${60 + timeToMinutes('11:20:00') * heightPerMinute}px`, height: `${10 * heightPerMinute}px` }}>
+             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase opacity-70">Tea Break</span>
+          </div>
+          <div className="absolute right-0 bg-[hsl(var(--muted)/0.3)] dark:bg-[hsl(var(--muted)/0.1)] flex items-center justify-center pointer-events-none border-y border-[hsl(var(--border)/0.5)] overflow-hidden z-0" 
+               style={{ left: '112px', top: `${60 + timeToMinutes('13:20:00') * heightPerMinute}px`, height: `${45 * heightPerMinute}px` }}>
+             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase opacity-70">Lunch Break</span>
+          </div>
+
+          {/* Time Axis */}
+          <div className="w-28 flex-shrink-0 relative border-r border-[hsl(var(--border)/0.5)]" style={{ height: `${containerHeight + 60}px` }}>
+            <div className="h-[60px] border-b border-[hsl(var(--border)/0.5)] bg-[hsl(var(--muted)/0.1)]"></div>
+            {/* Period Labels */}
+            {periods.map((period, i) => {
+              const top = timeToMinutes(period.start) * heightPerMinute;
+              const height = (timeToMinutes(period.end) - timeToMinutes(period.start)) * heightPerMinute;
+              return (
+                <div key={i} className="absolute w-full flex flex-col justify-center items-center text-center pr-1" style={{ top: `${60 + top}px`, height: `${height}px` }}>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Lec {i + 1}</span>
+                  <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-tight">
+                    {period.label.split(' - ')[0]}<br />-<br />{period.label.split(' - ')[1]}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Days Columns */}
+          {days.map((day, dayIndex) => {
+            const dayNum = dayIndex + 1 // 1 = Mon
+            const todayClasses = timetable.filter(t => t.day_of_week === dayNum)
+            const isToday = currentDay === dayNum
+            
+            const currentDayDate = new Date(monday)
+            currentDayDate.setDate(monday.getDate() + dayIndex)
+            
+            return (
+              <div key={day} className="flex-1 min-w-[120px] border-r border-[hsl(var(--border)/0.5)] last:border-0 relative flex flex-col" style={{ height: `${containerHeight + 60}px` }}>
+                {/* Day Header */}
+                <div className={cn(
+                  "h-[60px] border-b border-[hsl(var(--border)/0.5)] flex flex-col items-center justify-center transition-colors relative z-20 flex-shrink-0",
+                  isToday ? "bg-blue-50/50 dark:bg-blue-900/10 border-b-2 border-b-blue-500" : "bg-white dark:bg-[hsl(var(--card))]"
+                )}>
+                  <span className={cn("font-bold text-sm", isToday ? "text-blue-600 dark:text-blue-400" : "text-slate-900 dark:text-white")}>{day}</span>
+                  <span className={cn("text-xs font-medium", isToday ? "text-blue-500/80" : "text-slate-400")}>{currentDayDate.getDate()} {currentDayDate.toLocaleDateString('en-GB', { month: 'short' })}</span>
+                </div>
+                
+                {/* Content Area - Clips overflowing blocks */}
+                <div className="relative flex-1 overflow-hidden w-full">
+                  {/* Background Grid Elements */}
+                  {/* Top/Bottom container lines */}
+                  <div className="absolute left-0 right-0 border-t border-[hsl(var(--border)/0.3)] pointer-events-none" style={{ top: `0px` }}></div>
+                  <div className="absolute left-0 right-0 border-t border-[hsl(var(--border)/0.3)] pointer-events-none" style={{ top: `${containerHeight}px` }}></div>
+                  
+                  {/* Period lines */}
+                  {periods.map((period, i) => (
+                    <div key={`p-start-${i}`} className="absolute left-0 right-0 border-t border-[hsl(var(--border)/0.3)] pointer-events-none" style={{ top: `${timeToMinutes(period.start) * heightPerMinute}px` }}></div>
+                  ))}
+                  <div className="absolute left-0 right-0 border-t border-[hsl(var(--border)/0.3)] pointer-events-none" style={{ top: `${timeToMinutes('15:55:00') * heightPerMinute}px` }}></div>
+
+                  {/* Classes */}
+                  {todayClasses.map(cls => {
+                    const subject = Array.isArray(cls.subjects) ? cls.subjects[0] : cls.subjects;
+                    let actualStartMins = timeToMinutes(cls.start_time);
+                    let endMins = timeToMinutes(cls.end_time);
+                    
+                    // Fallback: If end_time is missing or invalid, default to 55 mins
+                    if (!cls.end_time || endMins <= actualStartMins) {
+                      endMins = actualStartMins + 55;
+                    }
+                    
+                    // Clamp bounds to prevent text from being clipped off the top of the grid
+                    const startMins = Math.max(0, actualStartMins);
+                    if (endMins > totalMinutes) endMins = totalMinutes;
+                    
+                    const top = startMins * heightPerMinute;
+                    let height = (endMins - startMins) * heightPerMinute;
+                    // Ensure a minimum height so text is always readable
+                    if (height < 40) height = 40;
+                    
+                    const colorClass = getPastelColor(subject?.code);
+
+                    return (
+                      <div 
+                        key={cls.id} 
+                        className={cn(
+                          "absolute left-[3px] right-[3px] rounded-lg p-2 shadow-sm border overflow-hidden transition-all hover:scale-[1.02] cursor-pointer hover:shadow-md hover:z-30 z-10 flex flex-col justify-start group",
+                          colorClass
+                        )}
+                        style={{ top: `${top}px`, height: `${height}px` }}
+                      >
+                        <div className="font-bold text-xs sm:text-sm leading-tight group-hover:line-clamp-none line-clamp-2">{subject?.name || 'Unknown Subject'}</div>
+                        {subject?.code && (
+                          <div className="text-[10px] sm:text-xs font-bold opacity-75 uppercase tracking-wider mt-1">{subject.code}</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
   )
 }

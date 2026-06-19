@@ -28,7 +28,11 @@ export default async function StudentAcademicPage() {
   const { data: submissions } = await supabase.from('assignment_submissions').select('*').eq('student_id', user.id)
 
   return (
-    <DashboardContainer title="Academic Portal" subtitle="View your timetable, attendance, assignments, and marks.">
+    <DashboardContainer>
+      <div className="hidden md:block mb-2">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Academic Portal</h1>
+        <p className="text-[hsl(var(--muted-foreground))] text-sm mt-1">View your timetable, attendance, assignments, and marks.</p>
+      </div>
       <StudentAcademicClient 
         subjects={subjects || []}
         timetable={timetable || []}

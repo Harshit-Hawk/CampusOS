@@ -117,7 +117,6 @@ export default async function RanksPage() {
                         <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                       )}
                       
-                      <div className="text-sm font-black text-[hsl(var(--muted-foreground))] mb-1">{numeral}</div>
                       <div className={`text-base font-bold mb-2 ${isCurrent ? 'text-blue-500' : isUnlocked ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
                         {stage.name} {numeral}
                       </div>

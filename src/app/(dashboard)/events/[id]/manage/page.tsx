@@ -1,14 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner } from '@/actions/events'
+import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback } from '@/actions/events'
 import { fetchEventCertificates, issueCertificate } from '@/actions/certificates'
+import { sendEventBroadcast, getEventBroadcasts } from '@/actions/communications'
+import { getEventReport } from '@/actions/ai'
 import { getInitials } from '@/lib/utils'
-import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode, Users, ChevronDown, ChevronUp, Download, Loader2, Trophy } from 'lucide-react'
+import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode, Users, ChevronDown, ChevronUp, Download, Loader2, Trophy, Megaphone, Send, Sparkles, ImagePlus, Printer, FileText } from 'lucide-react'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
 
 export default function ManageEventPage() {
   const params = useParams()
@@ -17,7 +20,7 @@ export default function ManageEventPage() {
 
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'scanner' | 'volunteers' | 'certificates' | 'teams' | 'winners'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'scanner' | 'volunteers' | 'certificates' | 'teams' | 'winners' | 'broadcast'>('overview')
 
   // Volunteers State
   const [volunteers, setVolunteers] = useState<any[]>([])
@@ -36,11 +39,28 @@ export default function ManageEventPage() {
   const [loadingTeams, setLoadingTeams] = useState(false)
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
 
+  const [issuingAllCerts, setIssuingAllCerts] = useState(false)
+
   const [exporting, setExporting] = useState(false)
 
   // Winners State
   const [winners, setWinners] = useState<any[]>([])
   const [loadingWinners, setLoadingWinners] = useState(false)
+
+  // AI Report State
+  const [eventReport, setEventReport] = useState<any>(null)
+  const [generatingReport, setGeneratingReport] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+
+  const [togglingFeedback, setTogglingFeedback] = useState(false)
+  
+  const reportRef = useRef<HTMLDivElement>(null)
+
+  // Broadcast State
+  const [broadcasts, setBroadcasts] = useState<any[]>([])
+  const [loadingBroadcasts, setLoadingBroadcasts] = useState(false)
+  const [broadcastForm, setBroadcastForm] = useState({ title: '', content: '', message_type: 'general' })
+  const [sendingBroadcast, setSendingBroadcast] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -59,6 +79,8 @@ export default function ManageEventPage() {
 
       setEvent(result.event)
       setLoading(false)
+
+      getEventReport(eventId).then(rep => setEventReport(rep)).catch(() => {})
     }
     load()
   }, [eventId, router])
@@ -109,6 +131,13 @@ export default function ManageEventPage() {
         fetchEventAttendees(eventId).then(res => setCheckedInList(res.checkedIn || []))
       }
     }
+    if (activeTab === 'broadcast') {
+      setLoadingBroadcasts(true)
+      getEventBroadcasts(eventId).then(data => {
+        setBroadcasts(data)
+        setLoadingBroadcasts(false)
+      }).catch(() => setLoadingBroadcasts(false))
+    }
   }, [activeTab, eventId, event?.is_team_event])
 
   async function handleProcessVolunteer(volId: string, status: 'approved' | 'rejected') {
@@ -141,12 +170,56 @@ export default function ManageEventPage() {
     }
   }
 
-  async function handleIssueCertificate(userId: string) {
-    const res = await issueCertificate(eventId, userId, `Certificate of Participation: ${event.title}`, `Awarded for actively participating in ${event.title}.`)
+  async function handleIssueCertificate(userId: string, isVolunteer: boolean = false) {
+    const title = isVolunteer ? `Certificate of Volunteering: ${event.title}` : `Certificate of Participation: ${event.title}`
+    const desc = isVolunteer ? `Awarded for dedicated volunteer service at ${event.title}.` : `Awarded for actively participating in ${event.title}.`
+    const res = await issueCertificate(eventId, userId, title, desc)
     if (res.error) toast.error(res.error)
     else {
       toast.success('Certificate issued!')
       fetchEventCertificates(eventId).then(r => setCertificates(r.certificates || []))
+    }
+  }
+
+  async function handleIssueAllCertificates(type: 'participants' | 'volunteers') {
+    setIssuingAllCerts(true)
+    const isVolunteer = type === 'volunteers'
+    const title = isVolunteer ? `Certificate of Volunteering: ${event.title}` : `Certificate of Participation: ${event.title}`
+    const desc = isVolunteer ? `Awarded for dedicated volunteer service at ${event.title}.` : `Awarded for actively participating in ${event.title}.`
+    
+    let targets = []
+    if (isVolunteer) {
+      targets = volunteers.filter(v => v.status === 'approved' && !certificates.some(c => c.user_id === v.user_id))
+    } else {
+      targets = checkedInList.filter(a => !certificates.some(c => c.user_id === a.user_id))
+    }
+
+    if (targets.length === 0) {
+      toast.info(`All ${type} have been issued certificates already.`)
+      setIssuingAllCerts(false)
+      return
+    }
+
+    toast.info(`Issuing ${targets.length} certificates...`)
+
+    try {
+      // Process in batches of 5 to avoid overwhelming network/DB
+      let successCount = 0
+      for (let i = 0; i < targets.length; i += 5) {
+        const batch = targets.slice(i, i + 5)
+        await Promise.all(batch.map(async (target) => {
+          const res = await issueCertificate(eventId, target.user_id, title, desc)
+          if (!res.error || res.error === 'Certificate already issued for this user') {
+            successCount++
+          }
+        }))
+      }
+      toast.success(`Successfully issued ${successCount} certificates!`)
+      fetchEventCertificates(eventId).then(r => setCertificates(r.certificates || []))
+    } catch (e) {
+      toast.error('An error occurred during bulk issuance.')
+    } finally {
+      setIssuingAllCerts(false)
     }
   }
 
@@ -214,6 +287,102 @@ export default function ManageEventPage() {
     }
   }
 
+  async function handleGenerateReport() {
+    setGeneratingReport(true)
+    try {
+      const res = await fetch('/api/ai/event-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to generate report')
+      
+      toast.success('Report generated successfully!')
+      const updatedReport = await getEventReport(eventId)
+      setEventReport(updatedReport)
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setGeneratingReport(false)
+    }
+  }
+
+  async function handleToggleFeedback() {
+    setTogglingFeedback(true)
+    try {
+      const newStatus = !event.feedback_published
+      const res = await publishEventFeedback(eventId, newStatus)
+      if (res.error) throw new Error(res.error)
+      setEvent({ ...event, feedback_published: newStatus })
+      toast.success(newStatus ? 'Feedback form published!' : 'Feedback form closed')
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to toggle feedback')
+    } finally {
+      setTogglingFeedback(false)
+    }
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !eventReport) return
+
+    setUploadingPhoto(true)
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`
+      
+      const { error: uploadError } = await supabase.storage
+        .from('events')
+        .upload(`reports/${fileName}`, file)
+        
+      if (uploadError) throw uploadError
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('events')
+        .getPublicUrl(`reports/${fileName}`)
+
+      // Update report_data
+      const currentPhotos = eventReport.report_data?.photos || []
+      const updatedPhotos = [...currentPhotos, publicUrl]
+      const updatedData = { ...eventReport.report_data, photos: updatedPhotos }
+      
+      const { error: updateError } = await supabase
+        .from('event_reports')
+        .update({ report_data: updatedData })
+        .eq('id', eventReport.id)
+
+      if (updateError) throw updateError
+      
+      setEventReport({ ...eventReport, report_data: updatedData })
+      toast.success('Photo added to report')
+    } catch (error: any) {
+      toast.error('Failed to upload photo: ' + error.message)
+    } finally {
+      setUploadingPhoto(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  async function handleSendBroadcast(e: React.FormEvent) {
+    e.preventDefault()
+    if (!broadcastForm.title || !broadcastForm.content) return
+    setSendingBroadcast(true)
+    try {
+      const result = await sendEventBroadcast(eventId, broadcastForm)
+      toast.success(`Broadcast sent to ${result.recipientCount} participants!`)
+      setBroadcastForm({ title: '', content: '', message_type: 'general' })
+      // Reload broadcasts
+      getEventBroadcasts(eventId).then(data => setBroadcasts(data))
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send broadcast')
+    } finally {
+      setSendingBroadcast(false)
+    }
+  }
+
   if (loading) return <div className="max-w-4xl mx-auto p-6"><div className="glass h-64 rounded-2xl animate-pulse" /></div>
   if (!event) return null
 
@@ -251,17 +420,30 @@ export default function ManageEventPage() {
         <button onClick={() => setActiveTab('winners')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'winners' ? 'bg-amber-500 text-white shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
           <div className="flex items-center justify-center gap-2"><Trophy className="w-4 h-4" /> Winners</div>
         </button>
+        <button onClick={() => setActiveTab('broadcast')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'broadcast' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+          <div className="flex items-center justify-center gap-2"><Megaphone className="w-4 h-4" /> Broadcast</div>
+        </button>
       </div>
 
       <div className="glass rounded-2xl p-6 min-h-[400px]">
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <h2 className="text-xl font-bold">Event Overview</h2>
-              <button onClick={handleExportCSV} disabled={exporting} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
-                {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                Export CSV
-              </button>
+              <div className="flex gap-2">
+                <button onClick={handleToggleFeedback} disabled={togglingFeedback} className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50 ${event.feedback_published ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20'}`}>
+                  {togglingFeedback ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                  {event.feedback_published ? 'Close Feedback' : 'Publish Feedback'}
+                </button>
+                <button onClick={handleGenerateReport} disabled={generatingReport} className="px-4 py-2 gradient-accent text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50">
+                  {generatingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {generatingReport ? 'Generating...' : 'AI Report'}
+                </button>
+                <button onClick={handleExportCSV} disabled={exporting} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50">
+                  {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Export CSV
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))] text-center">
@@ -292,6 +474,186 @@ export default function ManageEventPage() {
                 </div>
               </div>
             )}
+
+            {eventReport && eventReport.status === 'completed' && (
+              <div className="mt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-500" />
+                    AI Post-Event Analysis
+                  </h3>
+                  <div className="flex gap-2">
+                    <label className="cursor-pointer px-4 py-2 bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)] rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
+                      {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                      Add Photo
+                      <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+                    </label>
+                    <button onClick={() => window.print()} className="px-4 py-2 bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)] rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
+                      <Printer className="w-4 h-4" /> Print PDF
+                    </button>
+                  </div>
+                </div>
+
+                <div ref={reportRef} className="print:m-0 print:p-12 p-6 rounded-2xl border-2 border-[hsl(var(--border))] bg-white dark:bg-black text-black dark:text-white print:text-black print:bg-white relative overflow-hidden print-document font-sans">
+                  {/* Print Styles */}
+                  <style dangerouslySetInnerHTML={{__html: `
+                    @media print {
+                      @page { margin: 1in; size: A4; }
+                      body { 
+                        -webkit-print-color-adjust: exact !important; 
+                        print-color-adjust: exact !important; 
+                        background: white; 
+                      }
+                      body * { visibility: hidden; }
+                      .print-document, .print-document * { visibility: visible; }
+                      .print-document { 
+                        position: absolute; left: 0; top: 0; width: 100%; min-height: 100vh; 
+                        border: none !important; box-shadow: none !important; 
+                        font-family: 'Times New Roman', Times, serif !important;
+                        padding: 0 !important;
+                        color: #000 !important;
+                        background: white !important;
+                      }
+                      
+                      /* Brand Elements */
+                      .print-header { 
+                        margin-bottom: 2rem; 
+                        text-align: center;
+                      }
+                      .print-title { 
+                        font-family: 'Times New Roman', Times, serif !important;
+                        font-size: 20pt !important; 
+                        font-weight: bold !important; 
+                        color: #000 !important; 
+                        text-transform: uppercase;
+                        margin-bottom: 0.5rem;
+                      }
+                      .print-subtitle { 
+                        font-family: 'Times New Roman', Times, serif !important;
+                        font-size: 12pt !important; 
+                        color: #000 !important; 
+                      }
+                      
+                      /* Prose overrides for professional look */
+                      .print-prose { 
+                        max-width: 100% !important; 
+                        font-size: 12pt !important; 
+                        line-height: 1.5 !important; 
+                        color: #000 !important; 
+                        text-align: justify !important;
+                      }
+                      .print-prose * {
+                        color: #000 !important;
+                      }
+                      .print-prose h2, .print-prose h3, .print-prose h4 { 
+                        font-family: 'Times New Roman', Times, serif !important;
+                        color: #000 !important; 
+                        font-weight: bold !important; 
+                        margin-top: 1.5rem !important; 
+                        margin-bottom: 0.5rem !important;
+                        border: none !important;
+                      }
+                      .print-prose strong { color: #000 !important; font-weight: bold !important; }
+                      .print-prose ul { margin-top: 0.5rem !important; margin-bottom: 1rem !important; padding-left: 20px !important; }
+                      .print-prose li { margin-bottom: 0.25rem !important; }
+                      
+                      /* Metrics */
+                      .print-metrics { 
+                        margin-top: 2rem !important; 
+                        padding-top: 1rem !important; 
+                        border-top: 1px solid #000 !important;
+                        page-break-inside: avoid; 
+                      }
+                      .print-metrics h4 {
+                        font-family: 'Times New Roman', Times, serif !important;
+                        font-size: 14pt !important; 
+                        color: #000 !important; 
+                        font-weight: bold !important; 
+                        margin-bottom: 1rem !important;
+                      }
+                      .print-metric-list {
+                        list-style-type: none !important;
+                        padding-left: 0 !important;
+                        margin: 0 !important;
+                      }
+                      .print-metric-list li {
+                        font-size: 12pt !important;
+                        margin-bottom: 0.5rem !important;
+                        color: #000 !important;
+                      }
+                      .print-metric-list strong {
+                        font-weight: bold !important;
+                        color: #000 !important;
+                      }
+                      
+                      /* Photos */
+                      .print-photos { margin-top: 2rem !important; page-break-inside: avoid; }
+                      .print-photos h4 { 
+                        font-family: 'Times New Roman', Times, serif !important;
+                        font-size: 14pt !important; 
+                        color: #000 !important; 
+                        font-weight: bold !important; 
+                        margin-bottom: 1rem !important; 
+                      }
+                      .print-photo-grid { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 1rem !important; }
+                      .print-photo-box { border-radius: 0 !important; overflow: hidden !important; border: 1px solid #000 !important; }
+                      .print-photo-box img { width: 100% !important; height: auto !important; aspect-ratio: 16/9; object-fit: cover; }
+                    }
+                  `}} />
+                  
+                  <div className="text-center mb-8 print-header print:text-center print:block">
+                    <h1 className="text-3xl font-black mb-2 uppercase tracking-tight print-title">{event.title}</h1>
+                    <p className="text-gray-500 dark:text-gray-400 font-medium text-sm print-subtitle">Post-Event Report</p>
+                    <p className="hidden print:block text-sm mt-1 print-subtitle">Date Generated: {new Date(eventReport.created_at).toLocaleDateString()}</p>
+                  </div>
+                  
+                  <div className="prose prose-sm dark:prose-invert max-w-none mb-8 print-prose">
+                    <ReactMarkdown>{eventReport.ai_summary}</ReactMarkdown>
+                  </div>
+
+                  {eventReport.report_data?.photos?.length > 0 && (
+                    <div className="mb-8 print-photos">
+                      <h4 className="font-bold text-xl mb-4 text-gray-900 dark:text-gray-100 border-b pb-2 print:border-none print:pb-0">Event Highlights</h4>
+                      <div className="grid grid-cols-2 gap-4 print-photo-grid">
+                        {eventReport.report_data.photos.map((url: string, i: number) => (
+                          <div key={i} className="aspect-video rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 print-photo-box">
+                            <img src={url} alt={`Event highlight ${i+1}`} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="hidden print:block print-metrics">
+                    <h4>At a Glance</h4>
+                    <ul className="print-metric-list">
+                      <li><strong>Overall Rating:</strong> {eventReport.report_data?.feedback_summary?.avg_overall || 'N/A'} / 5</li>
+                      <li><strong>Feedback Responses:</strong> {eventReport.report_data?.feedback_summary?.total_responses || 0}</li>
+                      <li><strong>Attendance Rate:</strong> {eventReport.report_data?.attendanceRate || 0}%</li>
+                    </ul>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-6 border-t border-gray-200 dark:border-gray-800 print:hidden">
+                    <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-xl">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Overall Rating</p>
+                      <p className="font-black text-2xl text-blue-600 dark:text-blue-400">{eventReport.report_data?.feedback_summary?.avg_overall || 'N/A'} <span className="text-sm font-normal text-gray-400">/ 5</span></p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-xl">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Feedback Responses</p>
+                      <p className="font-black text-2xl text-gray-900 dark:text-white">{eventReport.report_data?.feedback_summary?.total_responses || 0}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-xl">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Attendance Rate</p>
+                      <p className="font-black text-2xl text-gray-900 dark:text-white">{eventReport.report_data?.attendanceRate || 0}%</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-xl">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Generated On</p>
+                      <p className="font-black text-lg text-gray-900 dark:text-white mt-1">{new Date(eventReport.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -312,33 +674,33 @@ export default function ManageEventPage() {
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
                 {checkedInList.length === 0 && <p className="text-sm text-[hsl(var(--muted-foreground))]">No attendees checked in yet.</p>}
                 {checkedInList.map(a => (
-                  <div key={a.id} className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)] flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                  <div key={a.id} className="p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border)/0.5)] flex flex-col gap-3">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 text-emerald-500 font-bold text-sm">
+                      <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 text-emerald-500 font-bold text-sm">
                         {getInitials(a.profiles?.full_name)}
                       </div>
-                      <div>
-                        <p className="text-sm font-bold">{a.profiles?.full_name}</p>
-                        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">Roll No: {a.profiles?.roll_no}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold truncate">{a.profiles?.full_name}</p>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 truncate">Roll No: {a.profiles?.roll_no}</p>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs text-[hsl(var(--muted-foreground))] w-full sm:w-auto mt-2 sm:mt-0">
-                      <div>
-                        <span className="block font-medium text-[hsl(var(--foreground))]">{a.profiles?.course || 'N/A'}</span>
-                        <span>Course</span>
+                    <div className="grid grid-cols-2 gap-3 text-xs text-[hsl(var(--muted-foreground))] w-full bg-[hsl(var(--background))] p-3 rounded-lg border border-[hsl(var(--border)/0.5)]">
+                      <div className="min-w-0">
+                        <span className="block font-medium text-[hsl(var(--foreground))] truncate" title={a.profiles?.course || 'N/A'}>{a.profiles?.course || 'N/A'}</span>
+                        <span className="text-[10px] uppercase tracking-wider">Course</span>
                       </div>
-                      <div>
-                        <span className="block font-medium text-[hsl(var(--foreground))]">{a.profiles?.department || 'N/A'}</span>
-                        <span>Branch</span>
+                      <div className="min-w-0">
+                        <span className="block font-medium text-[hsl(var(--foreground))] truncate" title={a.profiles?.department || 'N/A'}>{a.profiles?.department || 'N/A'}</span>
+                        <span className="text-[10px] uppercase tracking-wider">Branch</span>
                       </div>
-                      <div>
-                        <span className="block font-medium text-[hsl(var(--foreground))]">{a.profiles?.semester ? `Sem ${a.profiles.semester}` : 'N/A'}</span>
-                        <span>Semester</span>
+                      <div className="min-w-0">
+                        <span className="block font-medium text-[hsl(var(--foreground))] truncate" title={a.profiles?.semester ? `Sem ${a.profiles.semester}` : 'N/A'}>{a.profiles?.semester ? `Sem ${a.profiles.semester}` : 'N/A'}</span>
+                        <span className="text-[10px] uppercase tracking-wider">Semester</span>
                       </div>
-                      <div>
-                        <span className="block font-medium text-[hsl(var(--foreground))]">{a.profiles?.phone || 'N/A'}</span>
-                        <span>Mobile</span>
+                      <div className="min-w-0">
+                        <span className="block font-medium text-[hsl(var(--foreground))] truncate" title={a.profiles?.phone || 'N/A'}>{a.profiles?.phone || 'N/A'}</span>
+                        <span className="text-[10px] uppercase tracking-wider">Mobile</span>
                       </div>
                     </div>
                   </div>
@@ -382,35 +744,105 @@ export default function ManageEventPage() {
         )}
 
         {activeTab === 'certificates' && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-bold mb-4">Issue Certificates</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6">Award certificates to attendees who have successfully checked in.</p>
-            
-            {checkedInList.length === 0 ? (
-              <p className="text-sm text-amber-500 p-4 bg-amber-500/10 rounded-xl">No attendees have checked in yet. You can only issue certificates to verified attendees.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {checkedInList.map(a => {
-                  const hasCert = certificates.some(c => c.user_id === a.user_id)
-                  return (
-                    <div key={a.id} className="flex items-center justify-between p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))]">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center font-bold text-xs">
-                          {getInitials(a.profiles?.full_name)}
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-lg font-bold mb-2">Issue Certificates</h3>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">Award certificates to verified attendees and approved volunteers.</p>
+            </div>
+
+            {/* Participants Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-[hsl(var(--border))] pb-2">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Users className="w-4 h-4 text-blue-500" />
+                  Checked-in Participants
+                </h4>
+                {checkedInList.length > 0 && (
+                  <button
+                    onClick={() => handleIssueAllCertificates('participants')}
+                    disabled={issuingAllCerts}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+                  >
+                    {issuingAllCerts ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Award className="w-3.5 h-3.5" />}
+                    Issue All
+                  </button>
+                )}
+              </div>
+              {checkedInList.length === 0 ? (
+                <p className="text-sm text-amber-500 p-4 bg-amber-500/10 rounded-xl">No attendees have checked in yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {checkedInList.map(a => {
+                    const hasCert = certificates.some(c => c.user_id === a.user_id)
+                    return (
+                      <div key={a.id} className="flex items-center justify-between p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center font-bold text-xs">
+                            {getInitials(a.profiles?.full_name)}
+                          </div>
+                          <p className="font-medium text-sm">{a.profiles?.full_name}</p>
                         </div>
-                        <p className="font-medium text-sm">{a.profiles?.full_name}</p>
+                        <button 
+                          onClick={() => handleIssueCertificate(a.user_id, false)}
+                          disabled={hasCert || issuingAllCerts}
+                          className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${hasCert ? 'bg-blue-500/10 text-blue-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+                        >
+                          <Award className="w-3.5 h-3.5" />
+                          {hasCert ? 'Issued' : 'Issue Cert'}
+                        </button>
                       </div>
-                      <button 
-                        onClick={() => handleIssueCertificate(a.user_id)}
-                        disabled={hasCert}
-                        className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${hasCert ? 'bg-blue-500/10 text-blue-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-                      >
-                        <Award className="w-3.5 h-3.5" />
-                        {hasCert ? 'Issued' : 'Issue Cert'}
-                      </button>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Volunteers Section */}
+            {volunteers.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-[hsl(var(--border))] pb-2">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <HandHeart className="w-4 h-4 text-purple-500" />
+                    Approved Volunteers
+                  </h4>
+                  {volunteers.some(v => v.status === 'approved') && (
+                    <button
+                      onClick={() => handleIssueAllCertificates('volunteers')}
+                      disabled={issuingAllCerts}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500 text-white text-xs font-medium hover:bg-purple-600 transition-colors disabled:opacity-50"
+                    >
+                      {issuingAllCerts ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Award className="w-3.5 h-3.5" />}
+                      Issue All
+                    </button>
+                  )}
+                </div>
+                {volunteers.filter(v => v.status === 'approved').length === 0 ? (
+                  <p className="text-sm text-[hsl(var(--muted-foreground))] p-4 bg-[hsl(var(--muted)/0.5)] rounded-xl border border-[hsl(var(--border))]">No approved volunteers found.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {volunteers.filter(v => v.status === 'approved').map(v => {
+                      const hasCert = certificates.some(c => c.user_id === v.user_id)
+                      return (
+                        <div key={v.id} className="flex items-center justify-between p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))]">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-[hsl(var(--muted))] flex items-center justify-center font-bold text-xs text-purple-500">
+                              {getInitials(v.profiles?.full_name)}
+                            </div>
+                            <p className="font-medium text-sm">{v.profiles?.full_name}</p>
+                          </div>
+                          <button 
+                            onClick={() => handleIssueCertificate(v.user_id, true)}
+                            disabled={hasCert || issuingAllCerts}
+                            className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${hasCert ? 'bg-purple-500/10 text-purple-400 cursor-not-allowed' : 'bg-purple-500 text-white hover:bg-purple-600'}`}
+                          >
+                            <Award className="w-3.5 h-3.5" />
+                            {hasCert ? 'Issued' : 'Issue Cert'}
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -568,6 +1000,78 @@ export default function ManageEventPage() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'broadcast' && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-bold mb-1 flex items-center gap-2"><Megaphone className="w-5 h-5 text-blue-500" /> Broadcast to Participants</h3>
+              <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Send announcements to all registered participants of this event.</p>
+            </div>
+
+            {/* Compose Form */}
+            <form onSubmit={handleSendBroadcast} className="p-5 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Title *</label>
+                <input type="text" required value={broadcastForm.title}
+                  onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
+                  placeholder="e.g., Venue Changed to Hall B"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Message *</label>
+                <textarea required value={broadcastForm.content}
+                  onChange={(e) => setBroadcastForm({ ...broadcastForm, content: e.target.value })}
+                  placeholder="Write your announcement..."
+                  rows={3}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+              </div>
+              <div className="flex items-center justify-between">
+                <select value={broadcastForm.message_type}
+                  onChange={(e) => setBroadcastForm({ ...broadcastForm, message_type: e.target.value })}
+                  className="px-4 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] text-sm">
+                  <option value="general">📢 General</option>
+                  <option value="event_reminder">⏰ Reminder</option>
+                  <option value="venue_change">📍 Venue Change</option>
+                  <option value="food_announcement">🍕 Food Update</option>
+                  <option value="emergency">🚨 Emergency</option>
+                  <option value="deadline_update">📅 Deadline Update</option>
+                </select>
+                <button type="submit" disabled={sendingBroadcast}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium disabled:opacity-50 shadow-md hover:shadow-lg transition-all active:scale-95">
+                  {sendingBroadcast ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {sendingBroadcast ? 'Sending...' : 'Send Now'}
+                </button>
+              </div>
+            </form>
+
+            {/* Broadcast History */}
+            <div>
+              <h4 className="text-sm font-bold text-[hsl(var(--muted-foreground))] mb-3">Broadcast History</h4>
+              {loadingBroadcasts ? (
+                <div className="space-y-3">{Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-16 bg-[hsl(var(--muted))] rounded-xl animate-pulse" />)}</div>
+              ) : broadcasts.length === 0 ? (
+                <p className="text-sm text-[hsl(var(--muted-foreground))] p-4 bg-[hsl(var(--muted)/0.3)] rounded-xl text-center">No broadcasts sent for this event yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {broadcasts.map(b => (
+                    <div key={b.id} className="p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))]">
+                      <div className="flex items-center justify-between mb-1">
+                        <h5 className="font-semibold text-sm">{b.title}</h5>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-medium">
+                          {b.recipients_count} recipients
+                        </span>
+                      </div>
+                      <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 mb-2">{b.content}</p>
+                      <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                        {b.sent_at ? new Date(b.sent_at).toLocaleString() : new Date(b.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

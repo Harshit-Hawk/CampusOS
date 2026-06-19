@@ -7,6 +7,7 @@ import { PostCard } from '@/components/feed/post-card'
 import Link from 'next/link'
 import { getInitials } from '@/lib/utils'
 import { Users, Loader2 } from 'lucide-react'
+import { VerifiedBadge } from '@/components/ui/verified-badge'
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
@@ -61,8 +62,13 @@ export default function SearchPage() {
                   {user.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(user.full_name)}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-semibold text-[hsl(var(--foreground))]">{user.full_name}</p>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">Roll No: {user.roll_no}</p>
+                  <p className="font-semibold text-[hsl(var(--foreground))] flex items-center gap-1.5">
+                    {user.full_name}
+                    {user.is_verified && <VerifiedBadge type={user.verification_type} />}
+                  </p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">
+                    {user.username ? `@${user.username} • ` : ''}Roll No: {user.roll_no}
+                  </p>
                 </div>
               </Link>
             ))}

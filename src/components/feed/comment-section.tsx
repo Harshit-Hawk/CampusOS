@@ -5,10 +5,11 @@ import { addComment, fetchComments, fetchCommentById } from '@/actions/posts'
 import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime, getInitials } from '@/lib/utils'
 import { getStageTitle } from '@/lib/constants'
-import { Send, Loader2 } from 'lucide-react'
+import { Send, Loader2, BadgeCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import type { CommentWithAuthor } from '@/types/database'
+import { VerifiedBadge } from '@/components/ui/verified-badge'
 
 interface CommentSectionProps {
   postId: string
@@ -84,7 +85,7 @@ export function CommentSection({ postId }: CommentSectionProps) {
         <>
           {comments.map(comment => (
             <div key={comment.id} className="flex gap-2.5 animate-fade-in">
-              <Link href={`/profile/${comment.profiles?.roll_no}`}>
+              <Link href={`/profile/${comment.profiles?.username || comment.profiles?.roll_no}`}>
                 <div className="w-7 h-7 rounded-full gradient-primary flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0">
                   {comment.profiles?.avatar_url ? (
                     <img src={comment.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
@@ -95,7 +96,10 @@ export function CommentSection({ postId }: CommentSectionProps) {
               </Link>
               <div className="flex-1 bg-[hsl(var(--muted))] rounded-xl px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold">{comment.profiles?.full_name}</span>
+                  <span className="text-xs font-semibold flex items-center gap-1">
+                    {comment.profiles?.full_name}
+                    {comment.profiles?.is_verified && <VerifiedBadge type={comment.profiles?.verification_type} iconClassName="w-3.5 h-3.5" />}
+                  </span>
                   {comment.profiles?.role !== 'admin' && comment.profiles?.role !== 'faculty' && (
                     <span className="text-[10px] font-medium text-blue-500">{getStageTitle(comment.profiles?.level || 1)}</span>
                   )}

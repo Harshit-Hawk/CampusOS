@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchClub, joinClub, leaveClub, applyToClub, fetchClubApplications, processApplication } from '@/actions/clubs'
+import { fetchClub, joinClub, leaveClub, applyToClub, fetchClubApplications, processApplication, postClubAnnouncement, deleteClubAnnouncement } from '@/actions/clubs'
 import { getInitials, formatRelativeTime } from '@/lib/utils'
-import { Users, Calendar, UserPlus, UserMinus, ArrowLeft, Loader2, Check, X, ClipboardList, BarChart3, MessageSquare, Briefcase, Shield } from 'lucide-react'
+import { Users, Calendar, UserPlus, UserMinus, ArrowLeft, Loader2, Check, X, ClipboardList, BarChart3, MessageSquare, Briefcase, Shield, UploadCloud, Globe, Lock, Trash2, BadgeCheck } from 'lucide-react'
+import { ClubJoinButton } from '@/components/clubs/club-join-button'
+import { VerifiedBadge } from '@/components/ui/verified-badge'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -32,6 +34,13 @@ export default function ClubDetailPage() {
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [selectedPosition, setSelectedPosition] = useState<any>(null)
   const [applyMessage, setApplyMessage] = useState('')
+
+  // Announcement state
+  const [newAnnTitle, setNewAnnTitle] = useState('')
+  const [newAnnContent, setNewAnnContent] = useState('')
+  const [newAnnVisibility, setNewAnnVisibility] = useState('club')
+  const [newAnnFile, setNewAnnFile] = useState<File | null>(null)
+  const [isPostingAnn, setIsPostingAnn] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -107,6 +116,47 @@ export default function ClubDetailPage() {
       toast.success('Left club')
     }
     setActionLoading(false)
+  }
+
+  async function handlePostAnnouncement(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newAnnTitle.trim() || !newAnnContent.trim()) return
+    setIsPostingAnn(true)
+    
+    const formData = new FormData()
+    formData.append('clubId', clubId)
+    formData.append('title', newAnnTitle)
+    formData.append('content', newAnnContent)
+    formData.append('visibility', newAnnVisibility)
+    if (newAnnFile) {
+      formData.append('attachment', newAnnFile)
+    }
+
+    const res = await postClubAnnouncement(formData)
+    if (res.error) {
+      toast.error(res.error)
+    } else {
+      toast.success('Announcement posted!')
+      setNewAnnTitle('')
+      setNewAnnContent('')
+      setNewAnnVisibility('club')
+      setNewAnnFile(null)
+      // refresh announcements
+      const result = await fetchClub(clubId)
+      if (result.announcements) setAnnouncements(result.announcements)
+    }
+    setIsPostingAnn(false)
+  }
+
+  async function handleDeleteAnnouncement(annId: string) {
+    if (!window.confirm('Are you sure you want to delete this announcement?')) return
+    const res = await deleteClubAnnouncement(annId)
+    if (res.error) {
+      toast.error(res.error)
+    } else {
+      toast.success('Announcement deleted!')
+      setAnnouncements(prev => prev.filter(a => a.id !== annId))
+    }
   }
 
   // Removed handleApprove and handleReject as they belong to manage page
@@ -198,8 +248,17 @@ export default function ClubDetailPage() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left Column (Main Content) */}
+      {(!isMember && !canManage) ? (
+        <div className="glass rounded-3xl p-12 text-center flex flex-col items-center justify-center animate-fade-in mt-6">
+          <div className="w-20 h-20 bg-[hsl(var(--muted))] rounded-full flex items-center justify-center mb-4 border border-[hsl(var(--border)/0.5)]">
+            <Shield className="w-10 h-10 text-[hsl(var(--muted-foreground))]" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Private Club</h2>
+          <p className="text-[hsl(var(--muted-foreground))] max-w-md text-sm">You need to be a member of {club.name} to view its announcements, members, and activities.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left Column (Main Content) */}
         <div className="flex-1 space-y-6 min-w-0">
           {/* Tabs */}
           <div className="flex gap-2 p-1 glass rounded-xl animate-fade-in stagger-1 overflow-x-auto" style={{ opacity: 0 }}>
@@ -231,7 +290,10 @@ export default function ClubDetailPage() {
                         {m.profiles?.avatar_url ? <img src={m.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(m.profiles?.full_name || 'U')}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{m.profiles?.full_name}</p>
+                        <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                          {m.profiles?.full_name}
+                          {m.profiles?.is_verified && <VerifiedBadge type={m.profiles?.verification_type} iconClassName="w-3.5 h-3.5" />}
+                        </p>
                         <p className={`text-[10px] capitalize font-semibold ${m.role === 'president' || m.role === 'leader' ? 'text-amber-500' : m.role === 'member' ? 'text-[hsl(var(--muted-foreground))]' : 'text-blue-400'}`}>
                           {m.role.replace('_', ' ')}
                         </p>
@@ -244,18 +306,89 @@ export default function ClubDetailPage() {
 
             {activeTab === 'feed' && (
               <div className="space-y-4">
+                {canManage && (
+                  <form onSubmit={handlePostAnnouncement} className="glass rounded-2xl p-5 mb-6">
+                    <h3 className="font-semibold mb-4 text-sm">Create Announcement</h3>
+                    <div className="space-y-3">
+                      <input 
+                        type="text" 
+                        placeholder="Announcement Title" 
+                        value={newAnnTitle}
+                        onChange={e => setNewAnnTitle(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                        required
+                      />
+                      <textarea 
+                        placeholder="What do you want to announce?" 
+                        value={newAnnContent}
+                        onChange={e => setNewAnnContent(e.target.value)}
+                        rows={3}
+                        className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+                        required
+                      />
+                      
+                      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between pt-2">
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                          <label className="flex items-center gap-2 cursor-pointer border border-[hsl(var(--border))] px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-[hsl(var(--muted))] transition-colors w-full sm:w-auto justify-center">
+                            <UploadCloud className="w-4 h-4 text-blue-500" />
+                            {newAnnFile ? newAnnFile.name : 'Attach File'}
+                            <input type="file" className="hidden" onChange={e => setNewAnnFile(e.target.files?.[0] || null)} />
+                          </label>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 bg-[hsl(var(--muted))] p-1 rounded-lg w-full sm:w-auto">
+                          <button 
+                            type="button"
+                            onClick={() => setNewAnnVisibility('club')}
+                            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${newAnnVisibility === 'club' ? 'bg-[hsl(var(--background))] shadow-sm text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
+                          >
+                            <Lock className="w-3 h-3" /> Club Only
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setNewAnnVisibility('both')}
+                            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${newAnnVisibility === 'both' ? 'bg-[hsl(var(--background))] shadow-sm text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
+                          >
+                            <Globe className="w-3 h-3" /> Main Feed & Club
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <button 
+                        type="submit" 
+                        disabled={isPostingAnn || !newAnnTitle.trim() || !newAnnContent.trim()}
+                        className="w-full mt-4 py-2 rounded-xl gradient-primary text-white text-sm font-semibold flex justify-center items-center gap-2 shadow-md disabled:opacity-50"
+                      >
+                        {isPostingAnn ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Post Announcement'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+                
                 {announcements.length > 0 ? (
-                  announcements.map((ann: any) => (
-                    <div key={ann.id} className="glass rounded-2xl p-5">
+                  announcements.map((ann: any) => {
+                    const annClubData = Array.isArray(ann.clubs) ? ann.clubs[0] : ann.clubs;
+                    return (
+                    <div key={ann.id} className="glass rounded-2xl p-5 relative">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold overflow-hidden border border-[hsl(var(--border)/0.5)] shadow-sm">
-                          {ann.clubs?.logo_url ? <img src={ann.clubs.logo_url} alt="" className="w-full h-full object-cover" /> : getInitials(ann.clubs?.name || 'C')}
+                          {annClubData?.logo_url ? <img src={annClubData.logo_url} alt="" className="w-full h-full object-cover" /> : getInitials(annClubData?.name || 'C')}
                         </div>
                         <div>
-                          <p className="text-sm font-bold flex items-center gap-1.5">{ann.clubs?.name} <span className="bg-blue-500 text-white text-[8px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider">Official</span></p>
+                          <p className="text-sm font-bold flex items-center gap-1.5">{annClubData?.name || 'Club'} <BadgeCheck className="w-4 h-4 text-blue-500 fill-blue-500 text-white" /></p>
                           <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{formatRelativeTime(ann.created_at)}</p>
                         </div>
                       </div>
+                      
+                      {canManage && (
+                        <button
+                          onClick={() => handleDeleteAnnouncement(ann.id)}
+                          className="absolute top-5 right-5 p-1.5 text-[hsl(var(--muted-foreground))] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                          title="Delete Announcement"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                       <h3 className="font-semibold mb-2">{ann.title}</h3>
                       <p className="text-sm text-[hsl(var(--foreground)/0.9)] whitespace-pre-wrap">{ann.content}</p>
                       
@@ -274,7 +407,7 @@ export default function ClubDetailPage() {
                         </div>
                       )}
                     </div>
-                  ))
+                  )})
                 ) : (
                   <div className="glass rounded-2xl p-12 text-center">
                     <p className="text-4xl mb-4">📢</p>
@@ -307,7 +440,10 @@ export default function ClubDetailPage() {
                     {club.profiles.avatar_url ? <img src={club.profiles.avatar_url} alt="" className="w-full h-full object-cover" /> : getInitials(club.profiles.full_name)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{club.profiles.full_name}</p>
+                    <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                      {club.profiles.full_name}
+                      {club.profiles.is_verified && <VerifiedBadge type={club.profiles.verification_type} iconClassName="w-3.5 h-3.5" />}
+                    </p>
                     <p className="text-xs text-amber-500 font-medium">Club President</p>
                   </div>
                 </div>
@@ -319,7 +455,10 @@ export default function ClubDetailPage() {
                     {facultyCoordinator.avatar_url ? <img src={facultyCoordinator.avatar_url} alt="" className="w-full h-full object-cover" /> : getInitials(facultyCoordinator.full_name)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{facultyCoordinator.full_name}</p>
+                    <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                      {facultyCoordinator.full_name}
+                      {facultyCoordinator.is_verified && <VerifiedBadge type={facultyCoordinator.verification_type} iconClassName="w-3.5 h-3.5" />}
+                    </p>
                     <p className="text-xs text-blue-400 font-medium">Faculty Coordinator</p>
                   </div>
                 </div>
@@ -349,6 +488,7 @@ export default function ClubDetailPage() {
           )}
         </div>
       </div>
+      )}
 
         {/* Apply Modal */}
       {showApplyModal && (

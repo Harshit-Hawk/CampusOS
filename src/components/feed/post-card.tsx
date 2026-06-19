@@ -5,11 +5,11 @@ import { likePost, unlikePost, deletePost } from '@/actions/posts'
 import { CommentSection } from './comment-section'
 import { formatRelativeTime, getInitials, cn } from '@/lib/utils'
 import { getStageTitle } from '@/lib/constants'
-import { Heart, MessageCircle, Bookmark, Trash2 } from 'lucide-react'
+import { Heart, MessageCircle, Trash2, BadgeCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import type { PostWithAuthor } from '@/types/database'
-import { toggleSavePost } from '@/actions/search'
+import { VerifiedBadge } from '@/components/ui/verified-badge'
 
 interface PostWithStatus extends PostWithAuthor {
   user_has_saved?: boolean
@@ -28,9 +28,6 @@ export function PostCard({ post, onLikeToggle, onDelete, style, userRole }: Post
   const [showComments, setShowComments] = useState(false)
   const [likeLoading, setLikeLoading] = useState(false)
   const [animateLike, setAnimateLike] = useState(false)
-  
-  const [saveLoading, setSaveLoading] = useState(false)
-  const [isSaved, setIsSaved] = useState(post.user_has_saved || false)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
   async function handleLike() {
@@ -51,18 +48,6 @@ export function PostCard({ post, onLikeToggle, onDelete, style, userRole }: Post
     setLikeLoading(false)
   }
 
-  async function handleSave() {
-    if (saveLoading) return
-    setSaveLoading(true)
-    const res = await toggleSavePost(post.id, isSaved)
-    if (res.error) toast.error(res.error)
-    else {
-      setIsSaved(!isSaved)
-      toast.success(isSaved ? 'Post removed from saved' : 'Post saved!')
-    }
-    setSaveLoading(false)
-  }
-
   async function handleDelete() {
     if (!window.confirm('Are you sure you want to delete this post?')) return
     if (deleteLoading) return
@@ -78,11 +63,22 @@ export function PostCard({ post, onLikeToggle, onDelete, style, userRole }: Post
   }
 
   const renderContent = (content: string) => {
-    return content.split(/(#[a-z0-9_]+)/gi).map((part, i) => {
-      if (part.match(/^#[a-z0-9_]+$/i)) {
-        return <span key={i} className="text-blue-500 font-medium hover:underline cursor-pointer">{part}</span>
+    // Split by **bold** syntax
+    const parts = content.split(/(\*\*.*?\*\*)/g);
+    
+    return parts.map((part, i) => {
+      // Check if it's a bold part
+      if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+        return <strong key={i} className="font-bold">{part.slice(2, -2)}</strong>;
       }
-      return part
+      
+      // Otherwise, process hashtags
+      return part.split(/(#[a-z0-9_]+)/gi).map((subPart, j) => {
+        if (subPart.match(/^#[a-z0-9_]+$/i)) {
+          return <span key={`${i}-${j}`} className="text-blue-500 font-medium hover:underline cursor-pointer">{subPart}</span>
+        }
+        return subPart
+      })
     })
   }
 
@@ -91,26 +87,31 @@ export function PostCard({ post, onLikeToggle, onDelete, style, userRole }: Post
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         {post.club_id && (post as any).clubs ? (
-          <Link href={`/clubs/${post.club_id}`} className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 ring-2 ring-transparent group-hover:ring-blue-500/30 transition-all border border-[hsl(var(--border)/0.5)]">
-              {(post as any).clubs.logo_url ? (
-                <img src={(post as any).clubs.logo_url} alt="" className="w-full h-full rounded-full object-cover" />
-              ) : (
-                getInitials((post as any).clubs.name || 'C')
-              )}
-            </div>
-            <div>
-              <p className="text-sm font-bold flex items-center gap-1.5 group-hover:text-blue-400 transition-colors">
-                {(post as any).clubs.name} 
-                <span className="bg-blue-500 text-white text-[8px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider">Official</span>
-              </p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-[hsl(var(--muted-foreground))]">{formatRelativeTime(post.created_at || new Date().toISOString())}</span>
-              </div>
-            </div>
-          </Link>
+          (() => {
+            const clubData = Array.isArray((post as any).clubs) ? (post as any).clubs[0] : (post as any).clubs;
+            return (
+              <Link href={`/clubs/${post.club_id}`} className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 ring-2 ring-transparent group-hover:ring-blue-500/30 transition-all border border-[hsl(var(--border)/0.5)]">
+                  {clubData?.logo_url ? (
+                    <img src={clubData.logo_url} alt="" className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    getInitials(clubData?.name || 'C')
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-bold flex items-center gap-1.5 group-hover:text-blue-400 transition-colors">
+                    {clubData?.name || 'Club Announcement'} 
+                    <VerifiedBadge type="organization" />
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-[hsl(var(--muted-foreground))]">{formatRelativeTime(post.created_at || new Date().toISOString())}</span>
+                  </div>
+                </div>
+              </Link>
+            )
+          })()
         ) : (
-          <Link href={`/profile/${post.profiles?.roll_no}`} className="flex items-center gap-3 group">
+          <Link href={`/profile/${post.profiles?.username || post.profiles?.roll_no}`} className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 ring-2 ring-transparent group-hover:ring-blue-500/30 transition-all">
               {post.profiles?.avatar_url ? (
                 <img src={post.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
@@ -119,7 +120,10 @@ export function PostCard({ post, onLikeToggle, onDelete, style, userRole }: Post
               )}
             </div>
             <div>
-              <p className="text-sm font-semibold group-hover:text-blue-400 transition-colors">{post.profiles?.full_name}</p>
+              <p className="text-sm font-semibold group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                {post.profiles?.full_name}
+                {post.profiles?.is_verified && <VerifiedBadge type={post.profiles?.verification_type} />}
+              </p>
               <div className="flex items-center gap-2 flex-wrap mt-0.5">
                 {post.profiles?.role !== 'admin' && post.profiles?.role !== 'faculty' && (
                   <>
@@ -127,7 +131,7 @@ export function PostCard({ post, onLikeToggle, onDelete, style, userRole }: Post
                     <span className="text-xs text-[hsl(var(--muted-foreground))]">·</span>
                   </>
                 )}
-                <span className="text-xs text-[hsl(var(--muted-foreground))]">@{post.profiles?.roll_no}</span>
+                <span className="text-xs text-[hsl(var(--muted-foreground))]">@{post.profiles?.username || post.profiles?.roll_no}</span>
                 <span className="text-xs text-[hsl(var(--muted-foreground))]">·</span>
                 <span className="text-xs text-[hsl(var(--muted-foreground))]">{formatRelativeTime(post.created_at || new Date().toISOString())}</span>
               </div>
@@ -206,16 +210,7 @@ export function PostCard({ post, onLikeToggle, onDelete, style, userRole }: Post
 
         <div className="flex-1" />
 
-        <button
-          onClick={handleSave}
-          disabled={saveLoading}
-          className={cn(
-            'flex items-center gap-1.5 text-sm transition-all duration-200 py-1.5 px-2 rounded-lg hover:bg-[hsl(var(--muted))]',
-            isSaved ? 'text-blue-500' : 'text-[hsl(var(--muted-foreground))]'
-          )}
-        >
-          <Bookmark className={cn('w-4 h-4 transition-all', isSaved && 'fill-blue-500')} />
-        </button>
+        <div className="flex-1" />
       </div>
 
       {/* Comments */}

@@ -2,6 +2,7 @@
 
 import { Search, Zap, Menu } from 'lucide-react'
 import { NotificationBell } from '../notifications/notification-bell'
+import { ThemeToggle } from './theme-toggle'
 import type { Profile } from '@/types/database'
 import { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
@@ -79,7 +80,8 @@ export function Topbar({ user, setMobileMenuOpen }: TopbarProps) {
         </div>
 
         {/* Right section: Notifications */}
-        <div className="flex items-center z-10 pr-1">
+        <div className="flex items-center gap-1 z-10 pr-1">
+          <ThemeToggle />
           <NotificationBell />
         </div>
       </div>

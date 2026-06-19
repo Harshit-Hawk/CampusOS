@@ -1,19 +1,68 @@
 'use client'
 
-import React from 'react'
+import React, { useRef } from 'react'
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { 
   Home, Users, Calendar, Trophy, GraduationCap, Medal, User, Settings, 
   Search, Heart, MessageSquare, Share2, Compass, Bell, Shield, ArrowRight 
 } from 'lucide-react'
 
 export function HeroMockup() {
+  const ref = useRef<HTMLDivElement>(null)
+  
+  // Track mouse position relative to center of the container
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+
+  // Smooth out the movement using spring physics
+  const mouseXSpring = useSpring(x, { stiffness: 100, damping: 30 })
+  const mouseYSpring = useSpring(y, { stiffness: 100, damping: 30 })
+
+  // Map mouse position to rotation values (tilt up to 8 degrees)
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["8deg", "-8deg"])
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-8deg", "8deg"])
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current) return
+    const rect = ref.current.getBoundingClientRect()
+    const width = rect.width
+    const height = rect.height
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
+    const xPct = mouseX / width - 0.5
+    const yPct = mouseY / height - 0.5
+    x.set(xPct)
+    y.set(yPct)
+  }
+  
+  const handleMouseLeave = () => {
+    // Reset back to center when mouse leaves
+    x.set(0)
+    y.set(0)
+  }
+
   return (
-    <div className="relative w-full max-w-[720px] mx-auto lg:ml-auto aspect-[16/11] flex items-center justify-center select-none">
+    <div 
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="relative w-full max-w-[720px] mx-auto lg:ml-auto aspect-[16/11] flex items-center justify-center select-none perspective-[1000px]"
+    >
       
       {/* Light subtle glow behind mockups */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] bg-blue-500/5 rounded-full blur-[80px] -z-10" />
 
-      {/* 1. LAPTOP MOCKUP */}
+      {/* 3D Motion Wrapper */}
+      <motion.div 
+        style={{ 
+          rotateX, 
+          rotateY, 
+          transformStyle: "preserve-3d" 
+        }}
+        className="relative w-full h-full flex items-center justify-center"
+      >
+      
+        {/* 1. LAPTOP MOCKUP */}
       <div className="relative w-[85%] left-[-5%] aspect-[16/10.2] bg-white border-[5px] border-slate-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         
         {/* Laptop Screen Top Bezel & Camera */}
@@ -329,6 +378,8 @@ export function HeroMockup() {
           <div className="w-12 h-[2.5px] bg-slate-350 rounded-full" />
         </div>
       </div>
+
+      </motion.div>
 
     </div>
   )

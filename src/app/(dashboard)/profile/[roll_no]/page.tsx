@@ -11,7 +11,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
-    .eq('roll_no', roll_no)
+    .or(`roll_no.eq.${roll_no},username.eq.${roll_no}`)
     .single()
 
   if (!profile) notFound()

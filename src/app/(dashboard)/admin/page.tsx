@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getDashboardStats, fetchAllUsers, updateUserRole } from '@/actions/admin'
+import { getDashboardStats, fetchAllUsers, updateUserRole, toggleUserVerified } from '@/actions/admin'
 import { fetchClubs } from '@/actions/clubs'
 import { fetchEvents } from '@/actions/events'
 import { deleteClubAdmin, deleteEventAdmin } from '@/actions/admin'
 import { getInitials, cn } from '@/lib/utils'
-import { Shield, Users, CalendarDays, Newspaper, Zap, Search, ChevronDown, Trash2, Loader2, Image as ImageIcon } from 'lucide-react'
+import { Shield, Users, CalendarDays, Newspaper, Zap, Search, ChevronDown, Trash2, Loader2, Image as ImageIcon, BadgeCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { AssignClubLeaderModal } from '@/components/admin/assign-club-leader-modal'
@@ -73,6 +73,25 @@ export default function AdminPage() {
     else {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u))
       toast.success('Role updated')
+    }
+  }
+
+  async function handleToggleVerified(userId: string, currentStatus: boolean) {
+    const newStatus = !currentStatus
+    const result = await toggleUserVerified(userId, newStatus)
+    if (result.error) toast.error(result.error)
+    else {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_verified: newStatus, verification_type: newStatus ? 'student' : null } : u))
+      toast.success(newStatus ? 'User verified' : 'User unverified')
+    }
+  }
+
+  async function handleVerificationTypeChange(userId: string, type: string) {
+    const result = await toggleUserVerified(userId, true, type)
+    if (result.error) toast.error(result.error)
+    else {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, verification_type: type } : u))
+      toast.success('Verification type updated')
     }
   }
 
@@ -170,7 +189,11 @@ export default function AdminPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{user.full_name}</p>
-                        <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">Roll No: {user.roll_no} · {user.department || 'No dept'}</p>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">
+                          {user.username ? `@${user.username} · ` : ''}
+                          {user.roll_no ? `Roll No: ${user.roll_no} · ` : ''}
+                          {user.department || 'No dept'}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0">
@@ -179,6 +202,25 @@ export default function AdminPage() {
                       ) : (
                         <span className="text-xs text-[hsl(var(--muted-foreground))] font-medium whitespace-nowrap hidden sm:inline">Staff</span>
                       )}
+                      <button
+                        onClick={() => handleToggleVerified(user.id, !!user.is_verified)}
+                        className={cn("p-1.5 rounded-lg transition-colors", user.is_verified ? "text-blue-500 hover:bg-blue-500/10" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]")}
+                        title={user.is_verified ? "Remove verification" : "Verify user"}
+                      >
+                        <BadgeCheck className="w-5 h-5" />
+                      </button>
+                      {user.is_verified && (
+                        <select
+                          value={user.verification_type || 'student'}
+                          onChange={e => handleVerificationTypeChange(user.id, e.target.value)}
+                          className="px-2 py-1.5 rounded-lg bg-[hsl(var(--muted))] text-xs border border-[hsl(var(--border))] focus:outline-none cursor-pointer text-blue-500 font-medium"
+                        >
+                          <option value="student">Student</option>
+                          <option value="faculty">Faculty</option>
+                          <option value="institution">Institution</option>
+                          <option value="organization">Club / Organization</option>
+                        </select>
+                      )}
                       <select
                         value={user.role}
                         onChange={e => handleRoleChange(user.id, e.target.value)}
@@ -186,7 +228,7 @@ export default function AdminPage() {
                       >
                         <option value="user">User</option>
                         <option value="student">Student</option>
-                        <option value="alumni">Alumni</option>
+                        {/* <option value="alumni">Alumni</option> */}
                         <option value="faculty">Faculty</option>
                         {user.role !== 'admin' && <option value="club_leader">Club Leader</option>}
                         <option value="admin">Admin</option>

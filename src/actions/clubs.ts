@@ -84,7 +84,7 @@ export async function fetchClub(clubId: string) {
   // Fetch announcements
   const { data: announcements } = await supabase
     .from('club_announcements')
-    .select('*, profiles(*)')
+    .select('*, profiles(*), clubs(name, logo_url)')
     .eq('club_id', clubId)
     .order('created_at', { ascending: false })
     .limit(10)
@@ -174,8 +174,12 @@ export async function createClub(formData: FormData) {
 
   // If a leader was assigned, add them to club_members and update their role
   if (leader_id) {
-    // 1. Update user role to club_leader
-    await supabase.from('profiles').update({ role: 'club_leader' } as any).eq('id', leader_id)
+    // 1. Update user role to club_leader and auto-verify as organization (purple badge)
+    await supabase.from('profiles').update({ 
+      role: 'club_leader',
+      is_verified: true,
+      verification_type: 'organization'
+    } as any).eq('id', leader_id)
 
     // 2. Insert into club_members
     await supabase.from('club_members').insert({
@@ -333,6 +337,18 @@ export async function processApplication(applicationId: string, status: 'approve
 }
 
 // --- Phase 10: Club Feed & Announcements ---
+export async function fetchClubEvents(clubId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('events')
+    .select('*, profiles!events_organizer_id_fkey(*), clubs(*)')
+    .eq('club_id', clubId)
+    .order('start_date', { ascending: false })
+  
+  if (error) return { error: error.message, events: [] }
+  return { events: data || [] }
+}
+
 export async function fetchClubAnnouncements(clubId: string) {
   const supabase = await createClient()
   const { data, error } = await (supabase as any)
@@ -353,6 +369,7 @@ export async function postClubAnnouncement(formData: FormData) {
   const clubId = formData.get('clubId') as string
   const title = formData.get('title') as string
   const content = formData.get('content') as string
+  const visibility = formData.get('visibility') as string || 'club'
   const file = formData.get('attachment') as File | null
 
   let attachment_url = null
@@ -385,17 +402,24 @@ export async function postClubAnnouncement(formData: FormData) {
     attachment_type
   })
 
-  // Mirror to posts table
-  let media_urls = attachment_url ? [attachment_url] : []
-  let postContent = `**${title}**\n\n${content}`
-  
-  await (supabase as any).from('posts').insert({
-    author_id: user.id,
-    club_id: clubId,
-    content: postContent,
-    category: 'announcements',
-    media_urls
-  })
+  // Mirror to posts table if visibility is 'both'
+  if (visibility === 'both') {
+    let media_urls = attachment_url ? [attachment_url] : []
+    
+    // Fetch club name for better context in global feed
+    const { data: club } = await supabase.from('clubs').select('name').eq('id', clubId).single()
+    const clubName = club?.name || 'Club'
+    
+    let postContent = `📢 Announcement from ${clubName}\n\n[ ${title} ]\n\n${content}`
+    
+    await (supabase as any).from('posts').insert({
+      author_id: user.id,
+      club_id: clubId,
+      content: postContent,
+      category: 'announcements',
+      media_urls
+    })
+  }
 
   if (error) return { error: error.message }
   return { success: true }

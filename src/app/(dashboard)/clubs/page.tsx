@@ -49,7 +49,7 @@ export default function ClubsPage() {
   return (
     <DashboardContainer 
       title="Clubs" 
-      subtitle="Find your community and join the conversation"
+      subtitle="Discover and join student-led organizations on campus"
       action={headerAction}
     >
 

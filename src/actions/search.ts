@@ -9,7 +9,7 @@ export async function globalSearch(query: string) {
   // Search posts
   const { data: posts } = await supabase
     .from('posts')
-    .select('*, profiles!posts_author_id_fkey(*)')
+    .select('*, profiles!posts_author_id_fkey(*), clubs(*)')
     .ilike('content', `%${query}%`)
     .order('created_at', { ascending: false })
     .limit(5)
@@ -18,7 +18,7 @@ export async function globalSearch(query: string) {
   const { data: users } = await supabase
     .from('profiles')
     .select('*')
-    .or(`full_name.ilike.%${query}%,roll_no.ilike.%${query}%`)
+    .or(`full_name.ilike.%${query}%,roll_no.ilike.%${query}%,username.ilike.%${query}%`)
     .limit(5)
 
   // Search clubs

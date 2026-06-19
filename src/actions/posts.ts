@@ -137,7 +137,7 @@ export async function fetchPostById(id: string) {
 
   const { data: post, error } = await supabase
     .from('posts')
-    .select('*, profiles(*)')
+    .select('*, profiles(*), clubs(name, logo_url)')
     .eq('id', id)
     .single()
 

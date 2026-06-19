@@ -17,6 +17,8 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
   const [mounted, setMounted] = useState(false)
   const [bannerPreview, setBannerPreview] = useState<string | null>(null)
   const [isTeamEvent, setIsTeamEvent] = useState(false)
+  const [selectedClubId, setSelectedClubId] = useState('')
+  const [isClubOnly, setIsClubOnly] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -35,6 +37,8 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
       setOpen(false)
       setBannerPreview(null)
       setIsTeamEvent(false)
+      setSelectedClubId('')
+      setIsClubOnly(false)
       router.refresh()
     }
   }
@@ -174,6 +178,8 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
               <div className="relative">
                 <select
                   name="club_id"
+                  value={selectedClubId}
+                  onChange={(e) => setSelectedClubId(e.target.value)}
                   className="w-full pl-4 pr-10 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all appearance-none text-sm"
                 >
                   <option value="">None (Independent Event)</option>
@@ -186,18 +192,36 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
-            <input
-              type="checkbox"
-              id="is_team_event"
-              name="is_team_event"
-              checked={isTeamEvent}
-              onChange={(e) => setIsTeamEvent(e.target.checked)}
-              className="w-4 h-4 rounded border-[hsl(var(--border))] text-blue-500 focus:ring-blue-500/20 bg-[hsl(var(--muted))]"
-            />
-            <label htmlFor="is_team_event" className="text-sm font-medium text-[hsl(var(--foreground))] select-none cursor-pointer">
-              This is a Team Event
-            </label>
+          <div className="flex items-center gap-6 pt-2">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="is_team_event"
+                name="is_team_event"
+                checked={isTeamEvent}
+                onChange={(e) => setIsTeamEvent(e.target.checked)}
+                className="w-4 h-4 rounded border-[hsl(var(--border))] text-blue-500 focus:ring-blue-500/20 bg-[hsl(var(--muted))]"
+              />
+              <label htmlFor="is_team_event" className="text-sm font-medium text-[hsl(var(--foreground))] select-none cursor-pointer">
+                This is a Team Event
+              </label>
+            </div>
+            
+            {selectedClubId && (
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="is_club_only"
+                  name="is_club_only"
+                  checked={isClubOnly}
+                  onChange={(e) => setIsClubOnly(e.target.checked)}
+                  className="w-4 h-4 rounded border-[hsl(var(--border))] text-blue-500 focus:ring-blue-500/20 bg-[hsl(var(--muted))]"
+                />
+                <label htmlFor="is_club_only" className="text-sm font-medium text-[hsl(var(--foreground))] select-none cursor-pointer">
+                  Club Members Only
+                </label>
+              </div>
+            )}
           </div>
 
           {isTeamEvent && (

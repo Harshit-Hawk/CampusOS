@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { getLeaderboard, Timeframe, Scope } from '@/actions/leaderboard'
 import { getInitials, cn } from '@/lib/utils'
 import { Trophy, Crown, Flame, Filter, Users, Shield } from 'lucide-react'
+import { VerifiedBadge } from '@/components/ui/verified-badge'
 import { LevelIndicator } from '@/components/gamification/level-indicator'
 import { getStageTitle, getXPProgress, getXPForNextLevel } from '@/lib/constants'
 import Link from 'next/link'
@@ -145,15 +146,14 @@ export default function LeaderboardPage() {
                 <div className="w-14 h-14 rounded-full gradient-primary mx-auto flex items-center justify-center text-white font-bold mb-2 ring-2 ring-slate-400/50">
                   {top3[1].avatar_url ? <img src={top3[1].avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(top3[1].full_name)}
                 </div>
-                <p className="text-xs font-semibold truncate">{scope === 'club_ranking' ? top3[1].name : top3[1].full_name}</p>
+                <p className="text-xs font-semibold truncate flex items-center justify-center gap-1">
+                  {scope === 'club_ranking' ? top3[1].name : top3[1].full_name}
+                  {scope !== 'club_ranking' && top3[1].is_verified && <VerifiedBadge type={top3[1].verification_type} iconClassName="w-3.5 h-3.5" />}
+                </p>
                 {scope !== 'club_ranking' && (
-                  <>
-                    <p className="text-[10px] font-bold text-blue-500 mt-1">{getStageTitle(top3[1].level || 1)} · Lvl {top3[1].level || 1}</p>
-                    <div className="w-full bg-[hsl(var(--muted))] rounded-full h-1 mt-2 overflow-hidden">
-                      <div className="h-1 rounded-full bg-blue-500" style={{ width: `${getXPProgress(top3[1].xp_points || 0, top3[1].level || 1)}%` }}></div>
-                    </div>
-                  </>
+                  <p className="text-[10px] font-bold text-blue-500 mt-1 uppercase tracking-wider">{getStageTitle(top3[1].level || 1)}</p>
                 )}
+
                 <p className="text-xs font-bold text-blue-400 mt-2">{scope === 'club_ranking' ? top3[1].total_score : (top3[1].xp_points || 0).toLocaleString()} {scope === 'club_ranking' ? 'PTS' : 'XP'}</p>
               </div>
 
@@ -165,15 +165,14 @@ export default function LeaderboardPage() {
                 <div className="w-16 h-16 rounded-full gradient-primary mx-auto flex items-center justify-center text-white text-lg font-bold mb-2 ring-4 ring-amber-400/50 shadow-xl shadow-amber-500/20">
                   {top3[0].avatar_url ? <img src={top3[0].avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(top3[0].full_name)}
                 </div>
-                <p className="text-sm font-bold truncate mt-2">{scope === 'club_ranking' ? top3[0].name : top3[0].full_name}</p>
+                <p className="text-sm font-bold truncate mt-2 flex items-center justify-center gap-1.5">
+                  {scope === 'club_ranking' ? top3[0].name : top3[0].full_name}
+                  {scope !== 'club_ranking' && top3[0].is_verified && <VerifiedBadge type={top3[0].verification_type} />}
+                </p>
                 {scope !== 'club_ranking' && (
-                  <>
-                    <p className="text-xs font-bold text-amber-500 mt-1">{getStageTitle(top3[0].level || 1)} · Lvl {top3[0].level || 1}</p>
-                    <div className="w-full bg-[hsl(var(--muted))] rounded-full h-1 mt-2 overflow-hidden">
-                      <div className="h-1 rounded-full bg-amber-400" style={{ width: `${getXPProgress(top3[0].xp_points || 0, top3[0].level || 1)}%` }}></div>
-                    </div>
-                  </>
+                  <p className="text-[11px] font-black text-amber-500 mt-1 uppercase tracking-wider">{getStageTitle(top3[0].level || 1)}</p>
                 )}
+
                 <p className="text-sm font-black text-amber-500 mt-2">{scope === 'club_ranking' ? top3[0].total_score : (top3[0].xp_points || 0).toLocaleString()} {scope === 'club_ranking' ? 'PTS' : 'XP'}</p>
               </div>
 
@@ -184,15 +183,14 @@ export default function LeaderboardPage() {
                 <div className="w-14 h-14 rounded-full gradient-primary mx-auto flex items-center justify-center text-white font-bold mb-2 ring-2 ring-amber-700/50">
                   {top3[2].avatar_url ? <img src={top3[2].avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : getInitials(top3[2].full_name)}
                 </div>
-                <p className="text-xs font-semibold truncate">{scope === 'club_ranking' ? top3[2].name : top3[2].full_name}</p>
+                <p className="text-xs font-semibold truncate flex items-center justify-center gap-1">
+                  {scope === 'club_ranking' ? top3[2].name : top3[2].full_name}
+                  {scope !== 'club_ranking' && top3[2].is_verified && <VerifiedBadge type={top3[2].verification_type} iconClassName="w-3.5 h-3.5" />}
+                </p>
                 {scope !== 'club_ranking' && (
-                  <>
-                    <p className="text-[10px] font-bold text-blue-500 mt-1">{getStageTitle(top3[2].level || 1)} · Lvl {top3[2].level || 1}</p>
-                    <div className="w-full bg-[hsl(var(--muted))] rounded-full h-1 mt-2 overflow-hidden">
-                      <div className="h-1 rounded-full bg-blue-500" style={{ width: `${getXPProgress(top3[2].xp_points || 0, top3[2].level || 1)}%` }}></div>
-                    </div>
-                  </>
+                  <p className="text-[10px] font-bold text-blue-500 mt-1 uppercase tracking-wider">{getStageTitle(top3[2].level || 1)}</p>
                 )}
+
                 <p className="text-xs font-bold text-blue-400 mt-2">{scope === 'club_ranking' ? top3[2].total_score : (top3[2].xp_points || 0).toLocaleString()} {scope === 'club_ranking' ? 'PTS' : 'XP'}</p>
               </div>
             </div>
@@ -218,25 +216,24 @@ export default function LeaderboardPage() {
                     </div>
                   </div>
                   
-                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-bold truncate">{profile.full_name || profile.name}</p>
-                      <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{profile.department || profile.category || 'Unknown'}</p>
+                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold truncate flex items-center gap-1.5">
+                        {profile.full_name || profile.name}
+                        {scope !== 'club_ranking' && profile.is_verified && <VerifiedBadge type={profile.verification_type} />}
+                      </p>
+                      <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 truncate">{profile.department || profile.category || 'Unknown'}</p>
                     </div>
                     
                     {scope !== 'club_ranking' && (
-                      <div className="flex-1 sm:px-8 max-w-sm w-full">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-xs font-bold text-blue-500">{getStageTitle(currentLevel)}</span>
-                          <span className="text-[10px] text-[hsl(var(--muted-foreground))]">Lvl {currentLevel}</span>
-                        </div>
-                        <div className="w-full bg-[hsl(var(--muted))] rounded-full h-1.5 overflow-hidden flex">
-                          <div className="h-1.5 rounded-full bg-blue-500" style={{ width: `${getXPProgress(xpPoints, currentLevel)}%` }}></div>
-                        </div>
+                      <div className="w-full sm:w-32 flex-shrink-0 flex justify-start sm:justify-center">
+                        <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
+                          {getStageTitle(currentLevel)}
+                        </span>
                       </div>
                     )}
                     
-                    <div className="text-right">
+                    <div className="w-full sm:w-24 text-left sm:text-right flex-shrink-0">
                       <p className="text-lg font-black text-blue-400">{scope === 'club_ranking' ? profile.total_score : xpPoints.toLocaleString()}</p>
                       <p className="text-[10px] uppercase font-bold text-[hsl(var(--muted-foreground))]">{scope === 'club_ranking' ? 'PTS' : 'XP'}</p>
                     </div>

@@ -17,6 +17,8 @@ export async function fetchEvents(filter?: string) {
 
   if (filter === 'upcoming') {
     query = query.gte('start_date', now)
+  } else if (filter === 'club-organized') {
+    query = query.not('club_id', 'is', null)
   } else if (filter === 'past') {
     query = query.lt('end_date', now)
   } else if (filter === 'my-events' && user) {
@@ -129,9 +131,24 @@ export async function registerForEvent(eventId: string) {
   // Check capacity
   const { data: event } = await supabase
     .from('events')
-    .select('max_attendees, registered_count')
+    .select('max_attendees, registered_count, club_id, is_club_only')
     .eq('id', eventId)
     .single()
+
+  const ev = event as any
+
+  if (ev?.is_club_only && ev?.club_id) {
+    const { data: membership } = await supabase
+      .from('club_members')
+      .select('id')
+      .eq('club_id', ev.club_id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+      
+    if (!membership) {
+      return { error: 'This event is restricted to club members only' }
+    }
+  }
 
   // Prevent volunteers from registering as participants
   const { data: volunteer } = await (supabase.from('event_volunteers') as any)
@@ -140,8 +157,6 @@ export async function registerForEvent(eventId: string) {
     .eq('user_id', user.id)
     .maybeSingle()
   if (volunteer) return { error: 'You are already a volunteer for this event' }
-
-  const ev = event as any
   if (ev?.max_attendees && ev.registered_count >= ev.max_attendees) {
     return { error: 'Event is full' }
   }
@@ -179,9 +194,24 @@ export async function registerForTeamEvent(
   // Check event capacity
   const { data: event } = await supabase
     .from('events')
-    .select('max_attendees, registered_count, max_team_size')
+    .select('max_attendees, registered_count, max_team_size, club_id, is_club_only')
     .eq('id', eventId)
     .single()
+
+  const ev = event as any
+
+  if (ev?.is_club_only && ev?.club_id) {
+    const { data: membership } = await supabase
+      .from('club_members')
+      .select('id')
+      .eq('club_id', ev.club_id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+      
+    if (!membership) {
+      return { error: 'This event is restricted to club members only' }
+    }
+  }
 
   // Prevent volunteers from registering as participants
   const { data: volunteer } = await (supabase.from('event_volunteers') as any)
@@ -190,8 +220,6 @@ export async function registerForTeamEvent(
     .eq('user_id', user.id)
     .maybeSingle()
   if (volunteer) return { error: 'You are already a volunteer for this event' }
-
-  const ev = event as any
   if (ev?.max_attendees && ev.registered_count >= ev.max_attendees) {
     return { error: 'Event is full' }
   }
@@ -306,6 +334,7 @@ export async function createEvent(formData: FormData) {
   const banner = formData.get('banner') as File | null
   
   const is_team_event = formData.get('is_team_event') === 'on'
+  const is_club_only = formData.get('is_club_only') === 'on'
   const min_team_size = parseInt(formData.get('min_team_size') as string) || 1
   const max_team_size = parseInt(formData.get('max_team_size') as string) || null
 
@@ -333,7 +362,7 @@ export async function createEvent(formData: FormData) {
       title, description, location, start_date, end_date,
       club_id, organizer_id: user.id, max_attendees,
       organizer_name, banner_url,
-      is_team_event, min_team_size, max_team_size
+      is_team_event, min_team_size, max_team_size, is_club_only
     } as any)
     .select()
     .single()
@@ -620,5 +649,65 @@ export async function removeEventWinner(eventId: string, placement: number) {
 
   const { error } = await supabase.from('event_winners').delete().eq('event_id', eventId).eq('placement', placement)
   if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function publishEventFeedback(eventId: string, published: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Must be admin or organizer
+  const [profileRes, eventRes] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('events').select('organizer_id').eq('id', eventId).single()
+  ])
+  
+  if (profileRes.data?.role !== 'admin' && eventRes.data?.organizer_id !== user.id) {
+    return { error: 'Unauthorized' }
+  }
+
+  const { error } = await supabase
+    .from('events')
+    .update({ feedback_published: published })
+    .eq('id', eventId)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function submitEventFeedback(eventId: string, payload: {
+  overall_rating: number,
+  content_rating: number,
+  organization_rating: number,
+  venue_rating: number,
+  comments: string,
+  suggestions: string,
+  would_recommend: boolean
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('event_feedback')
+    .upsert({
+      event_id: eventId,
+      user_id: user.id,
+      overall_rating: payload.overall_rating,
+      content_rating: payload.content_rating,
+      organization_rating: payload.organization_rating,
+      venue_rating: payload.venue_rating,
+      comments: payload.comments,
+      suggestions: payload.suggestions,
+      would_recommend: payload.would_recommend
+    }, { onConflict: 'event_id, user_id' })
+
+  if (error) return { error: error.message }
+  
+  // Award CC for submitting feedback
+  const { awardCC } = await import('./gamification')
+  await awardCC(user.id, 10, 'Event Feedback Submission')
+
   return { success: true }
 }

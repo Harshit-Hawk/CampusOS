@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchClub, fetchClubApplications, processApplication, fetchClubAnnouncements, postClubAnnouncement, fetchClubPositions, createClubPosition, deleteClubPosition, promoteClubMember, fetchClubAnalytics, removeClubMember, deleteClubAnnouncement, updateClubBranding } from '@/actions/clubs'
+import { fetchClub, fetchClubApplications, processApplication, fetchClubAnnouncements, postClubAnnouncement, fetchClubPositions, createClubPosition, deleteClubPosition, promoteClubMember, fetchClubAnalytics, removeClubMember, deleteClubAnnouncement, updateClubBranding, fetchClubEvents } from '@/actions/clubs'
 import { getInitials, formatRelativeTime } from '@/lib/utils'
-import { ArrowLeft, Loader2, Users, ClipboardList, MessageSquare, Shield, Check, X, Briefcase, BarChart3, Trash2, Settings, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, Loader2, Users, ClipboardList, MessageSquare, Shield, Check, X, Briefcase, BarChart3, Trash2, Settings, Image as ImageIcon, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { EventCard } from '@/components/events/event-card'
 
 export default function ManageClubPage() {
   const params = useParams()
@@ -16,13 +17,13 @@ export default function ManageClubPage() {
   const [club, setClub] = useState<any>(null)
   const [members, setMembers] = useState<any[]>([])
   const [applications, setApplications] = useState<any[]>([])
-  const [announcements, setAnnouncements] = useState<any[]>([])
   const [positions, setPositions] = useState<any[]>([])
+  const [events, setEvents] = useState<any[]>([])
   const [analytics, setAnalytics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
 
-  const [activeTab, setActiveTab] = useState<'members' | 'applications' | 'positions' | 'announcements' | 'analytics' | 'settings'>('applications')
+  const [activeTab, setActiveTab] = useState<'members' | 'applications' | 'positions' | 'events' | 'analytics' | 'settings'>('applications')
 
   // Form states
   const [title, setTitle] = useState('')
@@ -54,16 +55,16 @@ export default function ManageClubPage() {
       setUserId(result.userId || null)
       
       // Fetch everything else
-      const [apps, anns, pos, stats] = await Promise.all([
+      const [apps, pos, evs, stats] = await Promise.all([
         fetchClubApplications(clubId),
-        fetchClubAnnouncements(clubId),
         fetchClubPositions(clubId),
+        fetchClubEvents(clubId),
         fetchClubAnalytics(clubId)
       ])
 
       setApplications(apps.applications || [])
-      setAnnouncements(anns.announcements || [])
       setPositions(pos.positions || [])
+      setEvents(evs.events || [])
       setAnalytics(stats.analytics || null)
       
       setLoading(false)
@@ -86,42 +87,6 @@ export default function ManageClubPage() {
     else {
       setApplications(prev => prev.filter(a => a.id !== appId))
       toast.success('Application rejected')
-    }
-  }
-
-  async function handlePostAnnouncement(e: React.FormEvent) {
-    e.preventDefault()
-    if (!title || !content) return
-    setActionLoading(true)
-
-    const formData = new FormData()
-    formData.append('clubId', clubId)
-    formData.append('title', title)
-    formData.append('content', content)
-    if (attachment) {
-      formData.append('attachment', attachment)
-    }
-
-    const res = await postClubAnnouncement(formData)
-    if (res.error) toast.error(res.error)
-    else {
-      toast.success('Announcement posted!')
-      setTitle('')
-      setContent('')
-      setAttachment(null)
-      const anns = await fetchClubAnnouncements(clubId)
-      setAnnouncements(anns.announcements || [])
-    }
-    setActionLoading(false)
-  }
-
-  async function handleDeleteAnnouncement(id: string) {
-    if (!confirm('Are you sure you want to delete this announcement?')) return
-    const res = await deleteClubAnnouncement(id)
-    if (res.error) toast.error(res.error)
-    else {
-      toast.success('Announcement deleted')
-      setAnnouncements(prev => prev.filter(a => a.id !== id))
     }
   }
 
@@ -209,8 +174,8 @@ export default function ManageClubPage() {
           <button onClick={() => setActiveTab('positions')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'positions' ? 'gradient-primary text-white shadow-md' : 'glass hover:bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))]'}`}>
             <Briefcase className="w-4 h-4" /> Open Positions
           </button>
-          <button onClick={() => setActiveTab('announcements')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'announcements' ? 'gradient-primary text-white shadow-md' : 'glass hover:bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))]'}`}>
-            <MessageSquare className="w-4 h-4" /> Announcements
+          <button onClick={() => setActiveTab('events')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'events' ? 'gradient-primary text-white shadow-md' : 'glass hover:bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))]'}`}>
+            <Calendar className="w-4 h-4" /> Organized Events
           </button>
           <button onClick={() => setActiveTab('members')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'members' ? 'gradient-primary text-white shadow-md' : 'glass hover:bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))]'}`}>
             <Shield className="w-4 h-4" /> Leadership & Roles
@@ -262,6 +227,36 @@ export default function ManageClubPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {activeTab === 'events' && (
+            <div className="glass rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-lg font-semibold">Organized Events</h2>
+                  <p className="text-sm text-[hsl(var(--muted-foreground))]">Manage and track events hosted by your club.</p>
+                </div>
+                <Link href="/events" className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors">
+                  Create New Event
+                </Link>
+              </div>
+              
+              {events.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {events.map((event, i) => (
+                    <EventCard key={event.id} event={event} index={i} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 border-2 border-dashed border-[hsl(var(--border)/0.5)] rounded-2xl">
+                  <Calendar className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-3 opacity-50" />
+                  <h3 className="text-lg font-semibold">No events yet</h3>
+                  <p className="text-[hsl(var(--muted-foreground))] text-sm mt-1 max-w-sm mx-auto">
+                    This club hasn't organized any events yet. Click the button above to create your first event!
+                  </p>
+                </div>
+              )}
             </div>
           )}
           
@@ -342,62 +337,6 @@ export default function ManageClubPage() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'announcements' && (
-            <div className="space-y-6">
-              <div className="glass rounded-2xl p-6">
-                <h2 className="text-lg font-semibold mb-4">Post Announcement</h2>
-                <form onSubmit={handlePostAnnouncement} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Title</label>
-                    <input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Important Update" className="w-full px-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Message Content</label>
-                    <textarea value={content} onChange={e => setContent(e.target.value)} required rows={4} className="w-full px-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] resize-none" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Attachment (Optional)</label>
-                    <input type="file" accept="image/*,.pdf" onChange={e => setAttachment(e.target.files?.[0] || null)} className="w-full px-4 py-2 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-500 hover:file:bg-blue-500/20" />
-                  </div>
-                  <button type="submit" disabled={actionLoading} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors">
-                    {actionLoading ? 'Posting...' : 'Post to Feed'}
-                  </button>
-                </form>
-              </div>
-
-              <div className="glass rounded-2xl p-6">
-                <h2 className="text-lg font-semibold mb-4">Recent Announcements</h2>
-                <div className="space-y-4">
-                  {announcements.map(a => (
-                    <div key={a.id} className="p-4 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--border)/0.5)]">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-semibold text-sm">{a.title}</p>
-                          <p className="text-xs text-[hsl(var(--muted-foreground))] mb-2">{formatRelativeTime(a.created_at)}</p>
-                        </div>
-                        <button onClick={() => handleDeleteAnnouncement(a.id)} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title="Delete Announcement">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <p className="text-sm text-[hsl(var(--foreground)/0.9)] mb-2 whitespace-pre-wrap">{a.content}</p>
-                      {a.attachment_url && (
-                        <div className="mt-2 text-xs font-medium text-blue-500">
-                          {a.attachment_type === 'image' ? (
-                            <img src={a.attachment_url} alt="Attachment" className="max-h-32 rounded-lg border border-[hsl(var(--border)/0.5)] object-cover" />
-                          ) : (
-                            <a href={a.attachment_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:underline">
-                              View Attached PDF
-                            </a>
-                          )}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>

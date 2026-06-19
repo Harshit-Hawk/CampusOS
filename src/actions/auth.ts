@@ -11,6 +11,7 @@ export async function signUp(formData: FormData) {
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
+  const username = formData.get('username') as string
   const fullName = formData.get('fullName') as string
   const mobileNumber = formData.get('mobileNumber') as string
   const rollNo = formData.get('rollNo') as string
@@ -21,6 +22,7 @@ export async function signUp(formData: FormData) {
     password,
     options: {
       data: {
+        username: username,
         full_name: fullName,
         roll_no: rollNo,
         mobile_number: mobileNumber,

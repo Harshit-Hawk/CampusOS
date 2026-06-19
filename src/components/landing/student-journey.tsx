@@ -37,9 +37,9 @@ const steps = [
   },
   { 
     id: 6, 
-    title: 'Get Opportunities', 
-    desc: 'Discover placements, internships and more.',
-    icon: Briefcase 
+    title: 'Grow Your Network', 
+    desc: 'Connect with peers and expand your horizons.',
+    icon: Users 
   },
 ]
 

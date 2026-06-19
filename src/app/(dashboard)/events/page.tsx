@@ -15,6 +15,7 @@ import { CardGridSkeleton } from '@/components/ui/skeleton'
 
 const filters = [
   { value: 'upcoming', label: 'Upcoming' },
+  { value: 'club-organized', label: 'Club Organized' },
   { value: 'past', label: 'Past' },
   { value: 'my-events', label: 'My Events' },
   { value: 'bookmarks', label: 'Bookmarks' },

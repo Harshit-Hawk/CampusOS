@@ -17,13 +17,26 @@ export async function updateProfile(formData: FormData) {
   const semester = parseInt(formData.get('semester') as string) || null
   const skillsStr = formData.get('skills') as string
   const skills = skillsStr ? skillsStr.split(',').map(s => s.trim()).filter(Boolean) : []
+  const instagram_url = formData.get('instagram_url') as string | null
+  const linkedin_url = formData.get('linkedin_url') as string | null
+  const github_url = formData.get('github_url') as string | null
   
   const roll_no = formData.get('roll_no') as string
+  const username = formData.get('username') as string | null
   
   // First, get the current profile to check if roll_no_updated is true
   const { data: currentProfile } = await supabase.from('profiles').select('roll_no_updated, roll_no').eq('id', user.id).single()
   
-  const updates: any = { full_name, bio, department, course, phone, email, year, semester, skills, updated_at: new Date().toISOString() }
+  const updates: any = { 
+    full_name, bio, department, course, phone, email, year, semester, skills,
+    instagram_url, linkedin_url, github_url,
+    updated_at: new Date().toISOString() 
+  }
+
+  // Only update username if provided (and maybe trim/lowercase it)
+  if (username !== null) {
+    updates.username = username.trim().toLowerCase() || null
+  }
   
   // Only update roll_no if they haven't updated it yet
   if (roll_no && currentProfile && !currentProfile.roll_no_updated && roll_no !== currentProfile.roll_no) {
@@ -37,7 +50,13 @@ export async function updateProfile(formData: FormData) {
     .select()
     .single()
 
-  if (error) return { error: error.message }
+  if (error) {
+    // Check for unique constraint violation (Postgres error code 23505)
+    if (error.code === '23505' && error.message.includes('profiles_username_key')) {
+      return { error: 'This username is already taken. Please choose another one.' }
+    }
+    return { error: error.message }
+  }
   return { data }
 }
 
