@@ -17,6 +17,26 @@ export async function signUp(formData: FormData) {
   const rollNo = formData.get('rollNo') as string
   const department = formData.get('department') as string
 
+  const { data: existingRollNo } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('roll_no', rollNo)
+    .single()
+
+  if (existingRollNo) {
+    return { error: 'This Roll Number is already registered with another account.' }
+  }
+
+  const { data: existingUsername } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('username', username)
+    .single()
+
+  if (existingUsername) {
+    return { error: 'This username is already taken. Please choose another one.' }
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
