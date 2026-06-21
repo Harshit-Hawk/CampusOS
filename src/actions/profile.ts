@@ -44,6 +44,14 @@ export async function updateProfile(formData: FormData) {
     updates.roll_no_updated = true
   }
 
+  // Update email in auth.users if it has changed
+  if (email && email !== user.email) {
+    const { error: authError } = await supabase.auth.updateUser({ email: email })
+    if (authError) {
+      return { error: `Failed to update login email: ${authError.message}` }
+    }
+  }
+
   const { data, error } = await (supabase.from('profiles') as any)
     .update(updates)
     .eq('id', user.id)
