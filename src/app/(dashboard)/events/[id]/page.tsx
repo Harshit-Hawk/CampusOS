@@ -28,6 +28,7 @@ export default function EventDetailPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [winners, setWinners] = useState<any[]>([])
   const [announcements, setAnnouncements] = useState<any[]>([])
+  const [userAttendanceLogs, setUserAttendanceLogs] = useState<any[]>([])
 
   const [isVolunteering, setIsVolunteering] = useState(false)
   const [canScan, setCanScan] = useState(false)
@@ -68,6 +69,14 @@ export default function EventDetailPage() {
           setIsVolunteering(true)
           if (vol.can_scan && vol.status === 'approved') setCanScan(true)
         }
+
+        const { data: attLogs } = await supabase
+          .from('event_daily_attendance')
+          .select('*')
+          .eq('event_id', eventId)
+          .eq('user_id', user.id)
+          .order('date', { ascending: false })
+        setUserAttendanceLogs(attLogs || [])
       }
       
       setLoading(false)
@@ -306,6 +315,32 @@ export default function EventDetailPage() {
               >
                 {isVolunteering ? <><Check className="w-4 h-4 text-green-500" /> Applied</> : <><HandHeart className="w-4 h-4 text-blue-400" /> Volunteer</>}
               </button>
+            </div>
+          )}
+
+          {/* User Attendance Logs */}
+          {userAttendanceLogs.length > 0 && (
+            <div className="mt-6 p-4 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.5)]">
+              <h3 className="font-semibold flex items-center gap-2 mb-3">
+                <Clock className="w-4 h-4 text-blue-400" /> My Attendance
+              </h3>
+              <div className="space-y-2">
+                {userAttendanceLogs.map((log) => (
+                  <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-[hsl(var(--background))] rounded-xl border border-[hsl(var(--border)/0.5)] text-sm">
+                    <span className="font-medium">{format(new Date(log.date), 'MMM dd, yyyy')}</span>
+                    <div className="flex items-center gap-4 mt-2 sm:mt-0 text-[hsl(var(--muted-foreground))]">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                        In: {log.check_in_time ? format(new Date(log.check_in_time), 'h:mm a') : '--'}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                        Out: {log.check_out_time ? format(new Date(log.check_out_time), 'h:mm a') : '--'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
