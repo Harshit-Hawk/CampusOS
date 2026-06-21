@@ -466,8 +466,11 @@ export default function LoginPage() {
                     type="tel" 
                     name="mobileNumber"
                     value={mobileNumber}
-                    onChange={(e: any) => setMobileNumber(e.target.value)}
-                    placeholder="Enter your mobile number" 
+                    onChange={(e: any) => setMobileNumber(e.target.value.replace(/\D/g, ''))}
+                    placeholder="10-digit mobile number" 
+                    pattern="\d{10}"
+                    title="Mobile number must be exactly 10 digits"
+                    maxLength={10}
                     required 
                   />
 

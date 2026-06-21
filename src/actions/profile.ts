@@ -11,8 +11,8 @@ export async function updateProfile(formData: FormData) {
   const bio = formData.get('bio') as string
   const department = formData.get('department') as string
   const course = formData.get('course') as string
-  const phone = formData.get('phone') as string
-  const email = formData.get('email') as string
+  const phone = formData.get('phone') as string | null
+  const email = formData.get('email') as string | null
   const year = parseInt(formData.get('year') as string) || null
   const semester = parseInt(formData.get('semester') as string) || null
   const skillsStr = formData.get('skills') as string
@@ -28,7 +28,7 @@ export async function updateProfile(formData: FormData) {
   const { data: currentProfile } = await supabase.from('profiles').select('roll_no_updated, roll_no').eq('id', user.id).single()
   
   const updates: any = { 
-    full_name, bio, department, course, phone, email, year, semester, skills,
+    full_name, bio, department, course, year, semester, skills,
     instagram_url, linkedin_url, github_url,
     updated_at: new Date().toISOString() 
   }
@@ -42,14 +42,6 @@ export async function updateProfile(formData: FormData) {
   if (roll_no && currentProfile && !currentProfile.roll_no_updated && roll_no !== currentProfile.roll_no) {
     updates.roll_no = roll_no
     updates.roll_no_updated = true
-  }
-
-  // Update email in auth.users if it has changed
-  if (email && email !== user.email) {
-    const { error: authError } = await supabase.auth.updateUser({ email: email })
-    if (authError) {
-      return { error: `Failed to update login email: ${authError.message}` }
-    }
   }
 
   const { data, error } = await (supabase.from('profiles') as any)

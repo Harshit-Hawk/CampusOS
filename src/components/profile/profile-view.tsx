@@ -575,7 +575,7 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
             <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Username</label>
             <div className="relative">
               <span className="absolute left-3 top-2 text-[hsl(var(--muted-foreground))] font-medium">@</span>
-              <input name="username" defaultValue={profile.username || ''} pattern="^[a-zA-Z0-9_.]{3,20}$" title="Username must be 3-20 characters long and contain only letters, numbers, underscores, and dots." className="w-full pl-8 pr-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm" placeholder="your_username" />
+              <input name="username" defaultValue={profile.username || ''} required pattern="^[a-zA-Z0-9_.]{3,20}$" title="Username must be 3-20 characters long and contain only letters, numbers, underscores, and dots." className="w-full pl-8 pr-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm" placeholder="your_username" />
             </div>
             <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Must be unique, 3-20 characters (letters, numbers, _, .).</p>
           </div>
@@ -615,12 +615,18 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
             </div>
           )}
           <div>
-            <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Email Address</label>
-            <input name="email" type="email" placeholder="you@example.com" defaultValue={profile.email || ''} className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm" />
+            <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))] flex items-center justify-between">
+              Email Address
+              <span className="text-xs text-amber-500 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full">Locked</span>
+            </label>
+            <input name="email" type="email" defaultValue={profile.email || ''} disabled title="You cannot change your email address after registration." className="w-full px-3 py-2 rounded-xl border border-transparent outline-none transition-all text-sm bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))] cursor-not-allowed" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Mobile Number</label>
-            <input name="phone" placeholder="+91 9876543210" defaultValue={profile.phone || ''} className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm" />
+            <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))] flex items-center justify-between">
+              Mobile Number
+              <span className="text-xs text-amber-500 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full">Locked</span>
+            </label>
+            <input name="phone" defaultValue={profile.phone || ''} disabled title="You cannot change your mobile number after registration." className="w-full px-3 py-2 rounded-xl border border-transparent outline-none transition-all text-sm bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))] cursor-not-allowed" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Skills (comma separated)</label>

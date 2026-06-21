@@ -17,6 +17,11 @@ export async function signUp(formData: FormData) {
   const rollNo = formData.get('rollNo') as string
   const department = formData.get('department') as string
 
+  // Validate mobile number to be exactly 10 digits
+  if (!/^\d{10}$/.test(mobileNumber)) {
+    return { error: 'Mobile number must be exactly 10 digits.' }
+  }
+
   const { data: existingRollNo } = await supabase
     .from('profiles')
     .select('id')
