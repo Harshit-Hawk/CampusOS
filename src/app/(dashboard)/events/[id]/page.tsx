@@ -14,6 +14,10 @@ import { fetchEvent, registerForEvent, unregisterFromEvent, volunteerForEvent, t
 import { getEventAnnouncements } from '@/actions/communications'
 import { TeamRegistrationModal } from '@/components/events/team-registration-modal'
 import { EventFeedbackModal } from '@/components/events/event-feedback-modal'
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
+import { Doughnut } from 'react-chartjs-2'
+
+ChartJS.register(ArcElement, Tooltip, Legend)
 
 export default function EventDetailPage() {
   const params = useParams()
@@ -26,6 +30,7 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState('student')
   const [winners, setWinners] = useState<any[]>([])
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [userAttendanceLogs, setUserAttendanceLogs] = useState<any[]>([])
@@ -66,6 +71,11 @@ export default function EventDetailPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUserId(user.id)
+        
+        // Fetch role
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        if (profile) setUserRole(profile.role)
+
         const { data: vol } = await supabase.from('event_volunteers').select('*').eq('event_id', eventId).eq('user_id', user.id).single()
         if (vol) {
           setIsVolunteering(true)
@@ -598,6 +608,47 @@ export default function EventDetailPage() {
               )}
             </div>
             {attendees.length === 0 && <p className="text-sm text-[hsl(var(--muted-foreground))]">No attendees yet. Be the first!</p>}
+
+            {/* Admin/Faculty Department Breakdown Graph */}
+            {(userRole === 'admin' || userRole === 'faculty') && attendees.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-[hsl(var(--border))]">
+                <h4 className="text-sm font-semibold mb-4 text-[hsl(var(--muted-foreground))]">Department Breakdown</h4>
+                <div className="h-48 w-full relative">
+                  <Doughnut 
+                    data={{
+                      labels: Object.keys(attendees.reduce((acc, a) => {
+                        const dept = a.profiles?.department || 'Unknown'
+                        acc[dept] = (acc[dept] || 0) + 1
+                        return acc
+                      }, {} as Record<string, number>)),
+                      datasets: [{
+                        data: Object.values(attendees.reduce((acc, a) => {
+                          const dept = a.profiles?.department || 'Unknown'
+                          acc[dept] = (acc[dept] || 0) + 1
+                          return acc
+                        }, {} as Record<string, number>)),
+                        backgroundColor: [
+                          'rgba(59, 130, 246, 0.8)', // blue
+                          'rgba(16, 185, 129, 0.8)', // emerald
+                          'rgba(245, 158, 11, 0.8)', // amber
+                          'rgba(139, 92, 246, 0.8)', // violet
+                          'rgba(236, 72, 153, 0.8)', // pink
+                          'rgba(99, 102, 241, 0.8)', // indigo
+                        ],
+                        borderWidth: 0,
+                      }]
+                    }} 
+                    options={{
+                      plugins: {
+                        legend: { position: 'right', labels: { color: 'hsl(var(--foreground))', font: { size: 10 } } }
+                      },
+                      cutout: '70%',
+                      maintainAspectRatio: false,
+                    }} 
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
