@@ -148,6 +148,9 @@ export function EventBanner() {
     load()
   }, [])
 
+  const extendedEvents = events.length > 1 ? [...events, events[0]] : events
+  const normalizedIndex = activeIndex >= events.length ? 0 : activeIndex
+
   // Handle scroll events to update active index
   useEffect(() => {
     const handleScroll = () => {
@@ -171,17 +174,30 @@ export function EventBanner() {
 
   // Auto-play functionality
   useEffect(() => {
-    if (events.length === 0) return
+    if (events.length <= 1) return
     const timer = setInterval(() => {
       if (!scrollRef.current) return
       
-      const nextIndex = (activeIndex + 1) % events.length
       const width = scrollRef.current.offsetWidth
-      scrollRef.current.scrollTo({ left: width * nextIndex, behavior: 'smooth' })
+      const currentScrollLeft = scrollRef.current.scrollLeft
+      const currentIndex = Math.round(currentScrollLeft / width)
+      
+      if (currentIndex === events.length) {
+        // Instantly jump to real first slide
+        scrollRef.current.scrollTo({ left: 0, behavior: 'auto' })
+        // Smooth scroll to second slide
+        setTimeout(() => {
+          if (!scrollRef.current) return
+          scrollRef.current.scrollTo({ left: width, behavior: 'smooth' })
+        }, 50)
+      } else {
+        // Smooth scroll to next slide (which might be the clone)
+        scrollRef.current.scrollTo({ left: width * (currentIndex + 1), behavior: 'smooth' })
+      }
     }, 5000)
 
     return () => clearInterval(timer)
-  }, [activeIndex, events.length])
+  }, [events.length])
 
   const scrollTo = (index: number) => {
     if (!scrollRef.current) return
@@ -208,8 +224,8 @@ export function EventBanner() {
         className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide rounded-2xl shadow-xl shadow-[hsl(var(--primary)/0.05)] bg-card border border-[hsl(var(--border)/0.5)]"
         style={{ scrollBehavior: 'smooth' }}
       >
-        {events.map((event, index) => (
-          <EventSlide key={event.id} event={event} isActive={activeIndex === index} />
+        {extendedEvents.map((event, index) => (
+          <EventSlide key={`${event.id}-${index}`} event={event} isActive={normalizedIndex === (index >= events.length ? 0 : index)} />
         ))}
       </div>
       
@@ -244,7 +260,7 @@ export function EventBanner() {
               onClick={() => scrollTo(i)} 
               className={cn(
                 "w-2 h-2 rounded-full transition-all duration-300",
-                activeIndex === i ? "bg-white w-4" : "bg-white/40 hover:bg-white/60"
+                normalizedIndex === i ? "bg-white w-4" : "bg-white/40 hover:bg-white/60"
               )}
             />
           ))}
