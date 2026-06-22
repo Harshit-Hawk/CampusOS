@@ -12,6 +12,10 @@ import { Scanner } from '@yudiel/react-qr-scanner'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js'
+import { Line } from 'react-chartjs-2'
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 export default function ManageEventPage() {
   const params = useParams()
@@ -721,6 +725,67 @@ export default function ManageEventPage() {
                 </div>
               </div>
             )}
+
+            {/* Incremental Check-ins Graph */}
+            {checkedInList.length > 0 && (
+              <div className="mt-6 p-6 glass rounded-2xl">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-sky-500" /> Check-in Trend
+                </h3>
+                <div className="h-64 w-full">
+                  <Line 
+                    data={{
+                      labels: (() => {
+                        const sorted = [...checkedInList].sort((a, b) => new Date(a.check_in_time).getTime() - new Date(b.check_in_time).getTime())
+                        const buckets: Record<string, number> = {}
+                        let cumulative = 0
+                        sorted.forEach(c => {
+                          const date = new Date(c.check_in_time)
+                          const mins = date.getMinutes()
+                          const roundedMins = mins < 30 ? '00' : '30'
+                          const timeKey = `${date.getHours().toString().padStart(2, '0')}:${roundedMins}`
+                          cumulative++
+                          buckets[timeKey] = cumulative
+                        })
+                        return Object.keys(buckets).sort()
+                      })(),
+                      datasets: [{
+                        label: 'Total Checked-In',
+                        data: (() => {
+                          const sorted = [...checkedInList].sort((a, b) => new Date(a.check_in_time).getTime() - new Date(b.check_in_time).getTime())
+                          const buckets: Record<string, number> = {}
+                          let cumulative = 0
+                          sorted.forEach(c => {
+                            const date = new Date(c.check_in_time)
+                            const mins = date.getMinutes()
+                            const roundedMins = mins < 30 ? '00' : '30'
+                            const timeKey = `${date.getHours().toString().padStart(2, '0')}:${roundedMins}`
+                            cumulative++
+                            buckets[timeKey] = cumulative
+                          })
+                          const keys = Object.keys(buckets).sort()
+                          return keys.map(k => buckets[k])
+                        })(),
+                        borderColor: 'rgba(14, 165, 233, 1)',
+                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: { legend: { display: false } },
+                      scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } },
+                        x: { grid: { display: false } }
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
 
             {eventReport && eventReport.status === 'completed' && (
               <div className="mt-8">
