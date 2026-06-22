@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner, processSmartScan } from '@/actions/events'
+import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner, processSmartScan, deleteEvent } from '@/actions/events'
 import { fetchEventCertificates, issueCertificate } from '@/actions/certificates'
 import { sendEventBroadcast, getEventBroadcasts } from '@/actions/communications'
 import { getEventReport } from '@/actions/ai'
@@ -23,6 +23,7 @@ export default function ManageEventPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'settings' | 'scanner' | 'volunteers' | 'certificates' | 'teams' | 'winners' | 'broadcast' | 'daily-attendance'>('overview')
   const [isScannerOnly, setIsScannerOnly] = useState(false)
   const [isUpdatingBanner, setIsUpdatingBanner] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Volunteers State
   const [volunteers, setVolunteers] = useState<any[]>([])
@@ -267,6 +268,20 @@ export default function ManageEventPage() {
     }
   }
 
+  async function handleDeleteEvent() {
+    if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone and will remove all registrations, attendees, and teams associated with it.')) return
+    
+    setIsDeleting(true)
+    const res = await deleteEvent(eventId)
+    setIsDeleting(false)
+    
+    if (res.error) {
+      toast.error(res.error)
+    } else {
+      toast.success('Event deleted successfully!')
+      router.push('/events')
+    }
+  }
 
   async function handleIssueAllCertificates(type: 'participants' | 'volunteers') {
     setIssuingAllCerts(true)
@@ -828,6 +843,24 @@ export default function ManageEventPage() {
                     onChange={handleUpdateBanner}
                     disabled={isUpdatingBanner}
                   />
+                </div>
+              </div>
+
+              <div className="pt-8 border-t border-[hsl(var(--border)/0.5)]">
+                <h3 className="text-lg font-bold text-red-500 mb-4">Danger Zone</h3>
+                <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/5">
+                  <h4 className="font-semibold text-sm mb-1">Delete this event</h4>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mb-4">
+                    Once you delete an event, there is no going back. Please be certain. All data including registrations, teams, and attendees will be removed.
+                  </p>
+                  <button
+                    onClick={handleDeleteEvent}
+                    disabled={isDeleting}
+                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {isDeleting ? 'Deleting...' : 'Delete Event'}
+                  </button>
                 </div>
               </div>
             </div>

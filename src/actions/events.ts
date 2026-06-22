@@ -388,6 +388,26 @@ export async function createEvent(formData: FormData) {
   return { data }
 }
 
+export async function deleteEvent(eventId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Must be admin or organizer
+  const [profileRes, eventRes] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('events').select('organizer_id').eq('id', eventId).single()
+  ])
+  
+  if (profileRes.data?.role !== 'admin' && eventRes.data?.organizer_id !== user.id) {
+    return { error: 'Unauthorized to delete this event' }
+  }
+
+  const { error } = await supabase.from('events').delete().eq('id', eventId)
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
 export async function updateEventCategory(eventId: string, category: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
