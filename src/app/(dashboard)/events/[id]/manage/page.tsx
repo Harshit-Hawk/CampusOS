@@ -732,56 +732,69 @@ export default function ManageEventPage() {
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                   <Users className="w-5 h-5 text-sky-500" /> Check-in Trend
                 </h3>
-                <div className="h-64 w-full">
-                  <Line 
-                    data={{
-                      labels: (() => {
-                        const sorted = [...checkedInList].sort((a, b) => new Date(a.check_in_time).getTime() - new Date(b.check_in_time).getTime())
-                        const buckets: Record<string, number> = {}
-                        let cumulative = 0
-                        sorted.forEach(c => {
-                          const date = new Date(c.check_in_time)
-                          const mins = date.getMinutes()
-                          const roundedMins = mins < 30 ? '00' : '30'
-                          const timeKey = `${date.getHours().toString().padStart(2, '0')}:${roundedMins}`
-                          cumulative++
-                          buckets[timeKey] = cumulative
-                        })
-                        return Object.keys(buckets).sort()
-                      })(),
-                      datasets: [{
-                        label: 'Total Checked-In',
-                        data: (() => {
-                          const sorted = [...checkedInList].sort((a, b) => new Date(a.check_in_time).getTime() - new Date(b.check_in_time).getTime())
-                          const buckets: Record<string, number> = {}
-                          let cumulative = 0
-                          sorted.forEach(c => {
-                            const date = new Date(c.check_in_time)
-                            const mins = date.getMinutes()
-                            const roundedMins = mins < 30 ? '00' : '30'
-                            const timeKey = `${date.getHours().toString().padStart(2, '0')}:${roundedMins}`
-                            cumulative++
-                            buckets[timeKey] = cumulative
-                          })
-                          const keys = Object.keys(buckets).sort()
-                          return keys.map(k => buckets[k])
-                        })(),
-                        borderColor: 'rgba(14, 165, 233, 1)',
-                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
-                        fill: true,
-                        tension: 0.4
-                      }]
-                    }}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: { legend: { display: false } },
-                      scales: {
-                        y: { beginAtZero: true, ticks: { precision: 0 } },
-                        x: { grid: { display: false } }
-                      }
-                    }}
-                  />
+                <div className="h-48 w-full mt-2">
+                  {(() => {
+                    const sorted = [...checkedInList].sort((a, b) => new Date(a.check_in_time).getTime() - new Date(b.check_in_time).getTime())
+                    const buckets: Record<string, number> = {}
+                    let cumulative = 0
+                    sorted.forEach(c => {
+                      const date = new Date(c.check_in_time)
+                      const mins = date.getMinutes()
+                      const roundedMins = mins < 30 ? '00' : '30'
+                      const timeKey = `${date.getHours().toString().padStart(2, '0')}:${roundedMins}`
+                      cumulative++
+                      buckets[timeKey] = cumulative
+                    })
+                    // Ensure at least one data point if there's checkins but all happened instantly
+                    const labels = Object.keys(buckets).sort()
+                    const checkinData = labels.map(k => buckets[k])
+                    
+                    return (
+                      <Line 
+                        data={{
+                          labels,
+                          datasets: [
+                            {
+                              label: 'Total Checked-In',
+                              data: checkinData,
+                              borderColor: 'rgba(16, 185, 129, 1)', // Emerald for checkins
+                              borderWidth: 2,
+                              pointRadius: 0,
+                              pointHoverRadius: 6,
+                              fill: false,
+                              tension: 0
+                            },
+                            ...(event.max_attendees ? [{
+                              label: 'Capacity Baseline',
+                              data: Array(labels.length).fill(event.max_attendees),
+                              borderColor: 'rgba(156, 163, 175, 0.8)',
+                              borderWidth: 2,
+                              borderDash: [5, 5],
+                              pointRadius: 0,
+                              pointHoverRadius: 0,
+                              fill: false,
+                              tension: 0
+                            }] : [])
+                          ]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: { 
+                            legend: { 
+                              position: 'bottom',
+                              labels: { usePointStyle: true, boxWidth: 6, font: { size: 11 } }
+                            } 
+                          },
+                          scales: {
+                            y: { display: false, min: 0, suggestedMax: event.max_attendees ? event.max_attendees * 1.1 : undefined },
+                            x: { display: false }
+                          },
+                          interaction: { mode: 'index', intersect: false }
+                        }}
+                      />
+                    )
+                  })()}
                 </div>
               </div>
             )}
