@@ -141,7 +141,7 @@ export async function generateAIResponse(
 }
 
 // Generate event report
-export async function generateEventReportAI(eventData: any): Promise<string> {
+export async function generateEventReportAI(eventData: any, userPrompt?: string): Promise<string> {
   let customFeedbackPrompt = ''
   if (eventData.customFeedbackSummary?.length > 0) {
     customFeedbackPrompt = '\n\nCustom Feedback Questions & Responses:\n'
@@ -189,6 +189,11 @@ Provide 3 actionable, forward-looking recommendations for the organizing committ
 - **Winners:** ${JSON.stringify(eventData.winners)}
 ${customFeedbackPrompt}
 
+${userPrompt ? `---
+**Special Instructions from Organizer:**
+${userPrompt}
+(Please ensure the report specifically addresses or incorporates these instructions.)
+` : ''}
 Maintain a formal, encouraging, and highly analytical tone throughout the report.`
 
   try {

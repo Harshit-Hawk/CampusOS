@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { eventId } = await request.json()
+    const { eventId, userPrompt } = await request.json()
 
     if (!eventId) {
       return NextResponse.json({ error: 'Event ID is required' }, { status: 400 })
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate AI summary
-    const aiSummary = await generateEventReportAI(eventData)
+    const aiSummary = await generateEventReportAI(eventData, userPrompt)
 
     // Update report with data
     const reportData = {

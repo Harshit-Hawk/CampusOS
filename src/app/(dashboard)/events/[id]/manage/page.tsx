@@ -55,6 +55,8 @@ export default function ManageEventPage() {
   const [eventReport, setEventReport] = useState<any>(null)
   const [generatingReport, setGeneratingReport] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportInstructions, setReportInstructions] = useState('')
 
   const [togglingFeedback, setTogglingFeedback] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
@@ -447,11 +449,12 @@ export default function ManageEventPage() {
 
   async function handleGenerateReport() {
     setGeneratingReport(true)
+    setShowReportModal(false)
     try {
       const res = await fetch('/api/ai/event-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId })
+        body: JSON.stringify({ eventId, userPrompt: reportInstructions })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to generate report')
@@ -679,7 +682,7 @@ export default function ManageEventPage() {
                   {togglingFeedback ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
                   {event.feedback_published ? 'Close Feedback' : 'Publish Feedback'}
                 </button>
-                <button onClick={handleGenerateReport} disabled={generatingReport} className="px-4 py-2 gradient-accent text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50">
+                <button onClick={() => setShowReportModal(true)} disabled={generatingReport} className="px-4 py-2 gradient-accent text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50">
                   {generatingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                   {generatingReport ? 'Generating...' : 'AI Report'}
                 </button>
@@ -1667,6 +1670,43 @@ export default function ManageEventPage() {
           </div>
         )}
       </div>
+
+      {/* Generate AI Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-[hsl(var(--border))] flex justify-between items-center bg-[hsl(var(--muted)/0.3)] shrink-0">
+              <div>
+                <h2 className="text-xl font-bold">Generate AI Report</h2>
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">Provide custom instructions for the AI</p>
+              </div>
+              <button onClick={() => setShowReportModal(false)} className="p-2 rounded-full bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)] transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                The AI will automatically analyze attendance, feedback, and demographics. You can provide specific instructions to focus the analysis:
+              </p>
+              <textarea
+                value={reportInstructions}
+                onChange={(e) => setReportInstructions(e.target.value)}
+                placeholder="e.g., Please focus heavily on the feedback for the keynote speaker and suggest improvements for venue management."
+                className="w-full h-32 p-3 bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              />
+            </div>
+            <div className="p-6 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] shrink-0 flex gap-3">
+              <button onClick={() => setShowReportModal(false)} disabled={generatingReport} className="flex-1 py-3 px-4 rounded-xl text-sm font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.5)] transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleGenerateReport} disabled={generatingReport} className="flex-1 py-3 px-4 gradient-accent text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50">
+                {generatingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                {generatingReport ? 'Generating...' : 'Generate Report'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom Feedback Questions Modal */}
       {showFeedbackModal && (
