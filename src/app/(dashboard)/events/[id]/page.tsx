@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { getInitials, formatRelativeTime, cn } from '@/lib/utils'
 import { getStageTitle } from '@/lib/constants'
 import { VerifiedBadge } from '@/components/ui/verified-badge'
-import { MapPin, Calendar, Users, UserPlus, UserMinus, ArrowLeft, Loader2, Clock, HandHeart, Check, Settings, QrCode, X, Bookmark, Share2, Bell, Trophy, Megaphone, Star, GraduationCap, PieChart } from 'lucide-react'
+import { MapPin, Calendar, Users, UserPlus, UserMinus, ArrowLeft, Loader2, Clock, HandHeart, Check, Settings, QrCode, X, Bookmark, Share2, Bell, Trophy, Megaphone, Star, GraduationCap, BarChart } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -14,10 +14,10 @@ import { fetchEvent, registerForEvent, unregisterFromEvent, volunteerForEvent, t
 import { getEventAnnouncements } from '@/actions/communications'
 import { TeamRegistrationModal } from '@/components/events/team-registration-modal'
 import { EventFeedbackModal } from '@/components/events/event-feedback-modal'
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
-import { Doughnut } from 'react-chartjs-2'
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
+import { Bar } from 'react-chartjs-2'
 
-ChartJS.register(ArcElement, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
 export default function EventDetailPage() {
   const params = useParams()
@@ -576,10 +576,10 @@ export default function EventDetailPage() {
           {(userRole === 'admin' || userRole === 'faculty') && attendees.length > 0 && (
             <div className="glass rounded-2xl p-6">
               <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-purple-500" /> Department Breakdown
+                <BarChart className="w-5 h-5 text-purple-500" /> Department Breakdown
               </h2>
               <div className="h-64 w-full relative flex items-center justify-center">
-                <Doughnut 
+                <Bar 
                   data={{
                     labels: Object.keys(attendees.reduce((acc, a) => {
                       const dept = a.profiles?.department || 'Unknown'
@@ -587,6 +587,7 @@ export default function EventDetailPage() {
                       return acc
                     }, {} as Record<string, number>)),
                     datasets: [{
+                      label: 'Attendees',
                       data: Object.values(attendees.reduce((acc, a) => {
                         const dept = a.profiles?.department || 'Unknown'
                         acc[dept] = (acc[dept] || 0) + 1
@@ -600,17 +601,24 @@ export default function EventDetailPage() {
                         'rgba(236, 72, 153, 0.8)', // pink
                         'rgba(99, 102, 241, 0.8)', // indigo
                       ],
-                      borderWidth: 0,
+                      borderRadius: 6,
                     }]
                   }} 
                   options={{
                     plugins: {
-                      legend: { 
-                        position: 'right', 
-                        labels: { color: 'hsl(var(--foreground))', font: { size: 12 }, usePointStyle: true, padding: 20 } 
+                      legend: { display: false }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, color: 'hsl(var(--muted-foreground))' },
+                        grid: { color: 'hsl(var(--border))' }
+                      },
+                      x: {
+                        ticks: { color: 'hsl(var(--muted-foreground))' },
+                        grid: { display: false }
                       }
                     },
-                    cutout: '70%',
                     maintainAspectRatio: false,
                   }} 
                 />
