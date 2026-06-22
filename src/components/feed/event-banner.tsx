@@ -139,6 +139,10 @@ export function EventBanner() {
   const [events, setEvents] = useState<EventBannerType[]>([])
   const [loading, setLoading] = useState(true)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const dragStartX = useRef(0)
+  const dragCurrentX = useRef(0)
+  const isDragging = useRef(false)
+  const [dragOffset, setDragOffset] = useState(0)
 
   useEffect(() => {
     async function load() {
@@ -215,17 +219,73 @@ export function EventBanner() {
     }
   }
 
+  // --- Touch & Mouse drag handlers ---
+  const handleDragStart = (clientX: number) => {
+    if (events.length <= 1) return
+    isDragging.current = true
+    dragStartX.current = clientX
+    dragCurrentX.current = clientX
+    setIsTransitioning(false)
+    if (timerRef.current) clearInterval(timerRef.current)
+  }
+
+  const handleDragMove = (clientX: number) => {
+    if (!isDragging.current) return
+    dragCurrentX.current = clientX
+    const diff = dragCurrentX.current - dragStartX.current
+    setDragOffset(diff)
+  }
+
+  const handleDragEnd = () => {
+    if (!isDragging.current) return
+    isDragging.current = false
+    const diff = dragCurrentX.current - dragStartX.current
+    const threshold = 50 // minimum px to count as a swipe
+    setDragOffset(0)
+    setIsTransitioning(true)
+
+    if (diff < -threshold) {
+      // Swiped left → go next
+      if (currentIndex < realCount) {
+        setCurrentIndex(prev => prev + 1)
+      }
+    } else if (diff > threshold) {
+      // Swiped right → go prev
+      if (currentIndex > 0) {
+        setCurrentIndex(prev => prev - 1)
+      }
+    }
+    resetTimer()
+  }
+
+  const onTouchStart = (e: React.TouchEvent) => handleDragStart(e.touches[0].clientX)
+  const onTouchMove = (e: React.TouchEvent) => handleDragMove(e.touches[0].clientX)
+  const onTouchEnd = () => handleDragEnd()
+  const onMouseDown = (e: React.MouseEvent) => { e.preventDefault(); handleDragStart(e.clientX) }
+  const onMouseMove = (e: React.MouseEvent) => handleDragMove(e.clientX)
+  const onMouseUp = () => handleDragEnd()
+  const onMouseLeave = () => { if (isDragging.current) handleDragEnd() }
+
   if (loading) return null
   if (events.length === 0) return null
 
   return (
     <div className="relative w-full mb-8 animate-fade-in group">
       {/* Carousel Container */}
-      <div className="overflow-hidden rounded-2xl shadow-xl shadow-[hsl(var(--primary)/0.05)] bg-card border border-[hsl(var(--border)/0.5)]">
+      <div
+        className="overflow-hidden rounded-2xl shadow-xl shadow-[hsl(var(--primary)/0.05)] bg-card border border-[hsl(var(--border)/0.5)] cursor-grab active:cursor-grabbing select-none"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseLeave}
+      >
         <div
           className="flex"
           style={{
-            transform: `translateX(-${currentIndex * 100}%)`,
+            transform: `translateX(calc(-${currentIndex * 100}% + ${dragOffset}px))`,
             transition: isTransitioning ? 'transform 700ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
           }}
           onTransitionEnd={handleTransitionEnd}
