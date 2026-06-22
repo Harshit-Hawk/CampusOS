@@ -745,9 +745,10 @@ export default function ManageEventPage() {
                       cumulative++
                       buckets[timeKey] = cumulative
                     })
-                    // Ensure at least one data point if there's checkins but all happened instantly
-                    const labels = Object.keys(buckets).sort()
-                    const checkinData = labels.map(k => buckets[k])
+                    // Prepend a "Start" baseline at 0 so a line always draws even with 1 check-in
+                    const timeKeys = Object.keys(buckets).sort()
+                    const labels = ['Start', ...timeKeys]
+                    const checkinData = [0, ...timeKeys.map(k => buckets[k])]
                     
                     return (
                       <Line 
