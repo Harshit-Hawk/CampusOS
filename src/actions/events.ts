@@ -843,6 +843,18 @@ export async function fetchDailyAttendanceLogs(eventId: string, date: string) {
   return { logs: data || [] }
 }
 
+export async function fetchAllDailyAttendanceLogs(eventId: string) {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('event_daily_attendance')
+    .select('*')
+    .eq('event_id', eventId)
+
+  if (error) return { error: error.message, logs: [] }
+  return { logs: data || [] }
+}
+
 export async function markDailyCheckIn(eventId: string, targetUserId: string, date: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

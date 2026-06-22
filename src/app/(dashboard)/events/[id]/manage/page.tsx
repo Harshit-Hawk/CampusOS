@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner, processSmartScan, deleteEvent, fetchEventSchedule, upsertScheduleDay, deleteScheduleDay } from '@/actions/events'
+import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, fetchAllDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner, processSmartScan, deleteEvent, fetchEventSchedule, upsertScheduleDay, deleteScheduleDay } from '@/actions/events'
 import { fetchEventCertificates, issueCertificate } from '@/actions/certificates'
 import { sendEventBroadcast, getEventBroadcasts } from '@/actions/communications'
 import { getEventReport } from '@/actions/ai'
@@ -366,8 +366,33 @@ export default function ManageEventPage() {
       
       const attendedUserIds = new Set(attendees.map((a: any) => a.user_id))
       
-      const baseHeaders = ['Name', 'Roll No', 'Email', 'Phone', 'Department', 'Course', 'Semester', 'Registered At', 'Attended']
-      const headers = event.is_team_event ? [...baseHeaders, 'Team Name', 'Team Code'] : baseHeaders
+      const baseHeaders = ['Name', 'Roll No', 'Email', 'Phone', 'Department', 'Course', 'Semester', 'Registered At', 'Attended (Overall)']
+      let headers = event.is_team_event ? [...baseHeaders, 'Team Name', 'Team Code'] : baseHeaders
+
+      // Fetch day-wise data if required
+      let scheduleDates: string[] = []
+      let dailyLogsMap = new Map<string, any[]>() // map of user_id to their logs
+      
+      if (event?.require_daily_attendance) {
+        const [schedRes, logsRes] = await Promise.all([
+          fetchEventSchedule(eventId),
+          fetchAllDailyAttendanceLogs(eventId)
+        ])
+        scheduleDates = (schedRes.schedule || []).map(s => s.date).sort()
+        
+        // Add dynamic headers for each day
+        scheduleDates.forEach(date => {
+          headers.push(`Day ${scheduleDates.indexOf(date) + 1} (${date})`)
+        })
+
+        // Group logs by user_id
+        const allLogs = logsRes.logs || []
+        allLogs.forEach(log => {
+          const userLogs = dailyLogsMap.get(log.user_id) || []
+          userLogs.push(log)
+          dailyLogsMap.set(log.user_id, userLogs)
+        })
+      }
       
       const rows = registrations.map((reg: any) => {
         const p = reg.profiles || {}
@@ -386,7 +411,18 @@ export default function ManageEventPage() {
           isAttended
         ]
 
-        const row = event.is_team_event ? [...baseRow, t.name || 'N/A', t.code || 'N/A'] : baseRow
+        let row = event.is_team_event ? [...baseRow, t.name || 'N/A', t.code || 'N/A'] : baseRow
+
+        // Add day-wise status
+        if (event?.require_daily_attendance) {
+          const userLogs = dailyLogsMap.get(reg.user_id) || []
+          scheduleDates.forEach(date => {
+            const logForDay = userLogs.find(l => l.date === date)
+            const status = logForDay?.check_in_time ? 'Present' : 'Absent'
+            row.push(status)
+          })
+        }
+
         return row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
       })
       
