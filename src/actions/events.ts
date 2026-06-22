@@ -934,3 +934,60 @@ export async function processSmartScan(eventId: string, targetUserId: string, da
     }
   }
 }
+
+// --- Event Schedule / Curriculum ---
+
+export async function fetchEventSchedule(eventId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('event_schedule')
+    .select('*')
+    .eq('event_id', eventId)
+    .order('date', { ascending: true })
+
+  if (error) return { error: error.message, schedule: [] }
+  return { schedule: data || [] }
+}
+
+export async function upsertScheduleDay(eventId: string, payload: {
+  date: string
+  day_title: string
+  description?: string
+  speaker?: string
+  start_time?: string
+  end_time?: string
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('event_schedule')
+    .upsert({
+      event_id: eventId,
+      date: payload.date,
+      day_title: payload.day_title,
+      description: payload.description || null,
+      speaker: payload.speaker || null,
+      start_time: payload.start_time || null,
+      end_time: payload.end_time || null,
+    }, { onConflict: 'event_id, date' })
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function deleteScheduleDay(eventId: string, date: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('event_schedule')
+    .delete()
+    .eq('event_id', eventId)
+    .eq('date', date)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}

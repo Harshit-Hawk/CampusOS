@@ -10,7 +10,7 @@ import { MapPin, Calendar, Users, UserPlus, UserMinus, ArrowLeft, Loader2, Clock
 import { QRCodeCanvas } from 'qrcode.react'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { fetchEvent, registerForEvent, unregisterFromEvent, volunteerForEvent, toggleEventBookmark, toggleEventReminder, fetchEventWinners } from '@/actions/events'
+import { fetchEvent, registerForEvent, unregisterFromEvent, volunteerForEvent, toggleEventBookmark, toggleEventReminder, fetchEventWinners, fetchEventSchedule } from '@/actions/events'
 import { getEventAnnouncements } from '@/actions/communications'
 import { TeamRegistrationModal } from '@/components/events/team-registration-modal'
 import { EventFeedbackModal } from '@/components/events/event-feedback-modal'
@@ -29,6 +29,7 @@ export default function EventDetailPage() {
   const [winners, setWinners] = useState<any[]>([])
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [userAttendanceLogs, setUserAttendanceLogs] = useState<any[]>([])
+  const [schedule, setSchedule] = useState<any[]>([])
 
   const [isVolunteering, setIsVolunteering] = useState(false)
   const [canScan, setCanScan] = useState(false)
@@ -58,6 +59,7 @@ export default function EventDetailPage() {
       setWinners(winnersRes.winners || [])
 
       getEventAnnouncements(eventId).then(data => setAnnouncements(data)).catch(() => {})
+      fetchEventSchedule(eventId).then(r => setSchedule(r.schedule || [])).catch(() => {})
       
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
@@ -319,28 +321,73 @@ export default function EventDetailPage() {
           )}
 
           {/* User Attendance Logs */}
-          {userAttendanceLogs.length > 0 && (
+          {/* Event Schedule & Daily Curriculum */}
+          {(schedule.length > 0 || userAttendanceLogs.length > 0) && (
             <div className="mt-6 p-4 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.5)]">
-              <h3 className="font-semibold flex items-center gap-2 mb-3">
-                <Clock className="w-4 h-4 text-blue-400" /> My Attendance
+              <h3 className="font-semibold flex items-center gap-2 mb-4">
+                <Calendar className="w-4 h-4 text-blue-400" /> Schedule & Curriculum
               </h3>
-              <div className="space-y-2">
-                {userAttendanceLogs.map((log) => (
-                  <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-[hsl(var(--background))] rounded-xl border border-[hsl(var(--border)/0.5)] text-sm">
-                    <span className="font-medium">{format(new Date(log.date), 'MMM dd, yyyy')}</span>
-                    <div className="flex items-center gap-4 mt-2 sm:mt-0 text-[hsl(var(--muted-foreground))]">
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                        In: {log.check_in_time ? format(new Date(log.check_in_time), 'h:mm a') : '--'}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-                        Out: {log.check_out_time ? format(new Date(log.check_out_time), 'h:mm a') : '--'}
-                      </span>
+              
+              {schedule.length > 0 ? (
+                <div className="space-y-4">
+                  {schedule.map((day) => {
+                    const log = userAttendanceLogs.find(l => l.date === day.date)
+                    return (
+                      <div key={day.date} className="flex gap-4 p-4 bg-[hsl(var(--background))] rounded-xl border border-[hsl(var(--border)/0.5)]">
+                        <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-blue-500/10 text-blue-500 shrink-0">
+                          <span className="text-[10px] font-bold uppercase">{new Date(day.date).toLocaleString('default', { month: 'short' })}</span>
+                          <span className="text-lg font-black">{new Date(day.date).getDate()}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-base truncate">{day.day_title}</h4>
+                          {day.speaker && <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 truncate">Speaker: {day.speaker}</p>}
+                          {(day.start_time || day.end_time) && (
+                            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+                              <Clock className="w-3 h-3 inline-block mr-1 -mt-0.5"/>
+                              {day.start_time && day.start_time.substring(0, 5)} {day.start_time && day.end_time && '-'} {day.end_time && day.end_time.substring(0, 5)}
+                            </p>
+                          )}
+                          {day.description && <p className="text-sm mt-2 text-[hsl(var(--muted-foreground))] leading-relaxed">{day.description}</p>}
+                          
+                          {/* Attendance for this day */}
+                          {event.require_daily_attendance && isRegistered && (
+                            <div className="mt-4 pt-3 border-t border-[hsl(var(--border)/0.5)] flex items-center gap-4 text-xs font-medium">
+                              <span className="text-[hsl(var(--muted-foreground))]">Your Attendance:</span>
+                              <span className="flex items-center gap-1.5">
+                                <span className={`w-2 h-2 rounded-full ${log?.check_in_time ? 'bg-green-500' : 'bg-[hsl(var(--muted-foreground))]'}`}></span>
+                                In: {log?.check_in_time ? format(new Date(log.check_in_time), 'h:mm a') : '--'}
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <span className={`w-2 h-2 rounded-full ${log?.check_out_time ? 'bg-orange-500' : 'bg-[hsl(var(--muted-foreground))]'}`}></span>
+                                Out: {log?.check_out_time ? format(new Date(log.check_out_time), 'h:mm a') : '--'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mb-3">No curriculum uploaded yet.</p>
+                  {userAttendanceLogs.map((log) => (
+                    <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-[hsl(var(--background))] rounded-xl border border-[hsl(var(--border)/0.5)] text-sm">
+                      <span className="font-medium">{format(new Date(log.date), 'MMM dd, yyyy')}</span>
+                      <div className="flex items-center gap-4 mt-2 sm:mt-0 text-[hsl(var(--muted-foreground))]">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                          In: {log.check_in_time ? format(new Date(log.check_in_time), 'h:mm a') : '--'}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                          Out: {log.check_out_time ? format(new Date(log.check_out_time), 'h:mm a') : '--'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

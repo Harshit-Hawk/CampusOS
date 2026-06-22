@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner, processSmartScan, deleteEvent } from '@/actions/events'
+import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner, processSmartScan, deleteEvent, fetchEventSchedule, upsertScheduleDay, deleteScheduleDay } from '@/actions/events'
 import { fetchEventCertificates, issueCertificate } from '@/actions/certificates'
 import { sendEventBroadcast, getEventBroadcasts } from '@/actions/communications'
 import { getEventReport } from '@/actions/ai'
 import { getInitials } from '@/lib/utils'
-import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode, Users, ChevronDown, ChevronUp, Download, Loader2, Trophy, Megaphone, Send, Sparkles, ImagePlus, Printer, FileText, LogOut } from 'lucide-react'
+import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode, Users, ChevronDown, ChevronUp, Download, Loader2, Trophy, Megaphone, Send, Sparkles, ImagePlus, Printer, FileText, LogOut, Calendar } from 'lucide-react'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -20,7 +20,7 @@ export default function ManageEventPage() {
 
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'settings' | 'scanner' | 'volunteers' | 'certificates' | 'teams' | 'winners' | 'broadcast' | 'daily-attendance'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'settings' | 'scanner' | 'volunteers' | 'certificates' | 'teams' | 'winners' | 'broadcast' | 'daily-attendance' | 'schedule'>('overview')
   const [isScannerOnly, setIsScannerOnly] = useState(false)
   const [isUpdatingBanner, setIsUpdatingBanner] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -71,6 +71,13 @@ export default function ManageEventPage() {
   const [dailyLogs, setDailyLogs] = useState<any[]>([])
   const [allRegistrations, setAllRegistrations] = useState<any[]>([])
   const [loadingDaily, setLoadingDaily] = useState(false)
+
+  // Schedule State
+  const [schedule, setSchedule] = useState<any[]>([])
+  const [loadingSchedule, setLoadingSchedule] = useState(false)
+  const [scheduleForm, setScheduleForm] = useState({ date: '', day_title: '', description: '', speaker: '', start_time: '', end_time: '' })
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false)
+  const [savingSchedule, setSavingSchedule] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -176,6 +183,13 @@ export default function ManageEventPage() {
         setAllRegistrations(regs.registrations || [])
         setDailyLogs(logs.logs || [])
         setLoadingDaily(false)
+      })
+    }
+    if (activeTab === 'schedule') {
+      setLoadingSchedule(true)
+      fetchEventSchedule(eventId).then(res => {
+        setSchedule(res.schedule || [])
+        setLoadingSchedule(false)
       })
     }
   }, [activeTab, eventId, event?.is_team_event, selectedDate])
@@ -489,6 +503,30 @@ export default function ManageEventPage() {
     }
   }
 
+  async function handleSaveScheduleDay(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingSchedule(true)
+    const res = await upsertScheduleDay(eventId, scheduleForm)
+    setSavingSchedule(false)
+    if (res.error) toast.error(res.error)
+    else {
+      toast.success('Schedule day saved successfully!')
+      setIsEditingSchedule(false)
+      setScheduleForm({ date: '', day_title: '', description: '', speaker: '', start_time: '', end_time: '' })
+      fetchEventSchedule(eventId).then(r => setSchedule(r.schedule || []))
+    }
+  }
+
+  async function handleDeleteScheduleDay(date: string) {
+    if (!window.confirm('Are you sure you want to delete this schedule day?')) return
+    const res = await deleteScheduleDay(eventId, date)
+    if (res.error) toast.error(res.error)
+    else {
+      toast.success('Schedule day deleted!')
+      fetchEventSchedule(eventId).then(r => setSchedule(r.schedule || []))
+    }
+  }
+
   if (loading) return <div className="max-w-4xl mx-auto p-6"><div className="glass h-64 rounded-2xl animate-pulse" /></div>
   if (!event) return null
 
@@ -536,9 +574,14 @@ export default function ManageEventPage() {
             <div className="flex items-center justify-center gap-2"><Megaphone className="w-4 h-4" /> Broadcast</div>
           </button>
           {event?.require_daily_attendance && (
-            <button onClick={() => setActiveTab('daily-attendance')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'daily-attendance' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
-              <div className="flex items-center justify-center gap-2"><ClipboardCheck className="w-4 h-4" /> Daily Checks</div>
-            </button>
+            <>
+              <button onClick={() => setActiveTab('schedule')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'schedule' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+                <div className="flex items-center justify-center gap-2"><Calendar className="w-4 h-4" /> Schedule</div>
+              </button>
+              <button onClick={() => setActiveTab('daily-attendance')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'daily-attendance' ? 'bg-[hsl(var(--background))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`}>
+                <div className="flex items-center justify-center gap-2"><ClipboardCheck className="w-4 h-4" /> Daily Checks</div>
+              </button>
+            </>
           )}
         </div>
       )}
@@ -1425,6 +1468,114 @@ export default function ManageEventPage() {
                     </div>
                   )
                 })}
+              </div>
+            )}
+          </div>
+        )}
+        {activeTab === 'schedule' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2"><Calendar className="w-5 h-5 text-blue-500" /> Event Schedule</h3>
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">Manage day-wise curriculum and agenda.</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setScheduleForm({ date: event.start_date.split('T')[0], day_title: '', description: '', speaker: '', start_time: '', end_time: '' })
+                  setIsEditingSchedule(true)
+                }}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors"
+              >
+                Add Schedule Day
+              </button>
+            </div>
+
+            {isEditingSchedule && (
+              <form onSubmit={handleSaveScheduleDay} className="p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] space-y-4">
+                <h4 className="font-semibold text-sm mb-2">{scheduleForm.date ? 'Edit' : 'Add'} Schedule Day</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Date</label>
+                    <input type="date" required value={scheduleForm.date} onChange={e => setScheduleForm({...scheduleForm, date: e.target.value})} min={event.start_date.split('T')[0]} max={event.end_date.split('T')[0]} className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Day Title</label>
+                    <input type="text" required value={scheduleForm.day_title} onChange={e => setScheduleForm({...scheduleForm, day_title: e.target.value})} placeholder="e.g. Day 1 - Introduction" className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium mb-1">Description / Curriculum</label>
+                    <textarea value={scheduleForm.description} onChange={e => setScheduleForm({...scheduleForm, description: e.target.value})} rows={3} placeholder="What will be covered on this day?" className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm resize-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Speaker (Optional)</label>
+                    <input type="text" value={scheduleForm.speaker} onChange={e => setScheduleForm({...scheduleForm, speaker: e.target.value})} placeholder="e.g. John Doe" className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium mb-1">Start Time</label>
+                      <input type="time" value={scheduleForm.start_time} onChange={e => setScheduleForm({...scheduleForm, start_time: e.target.value})} className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1">End Time</label>
+                      <input type="time" value={scheduleForm.end_time} onChange={e => setScheduleForm({...scheduleForm, end_time: e.target.value})} className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2 border-t border-[hsl(var(--border))]">
+                  <button type="button" onClick={() => setIsEditingSchedule(false)} className="px-4 py-2 rounded-lg text-sm font-medium bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)]">Cancel</button>
+                  <button type="submit" disabled={savingSchedule} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                    {savingSchedule && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Save Schedule
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {loadingSchedule ? (
+              <div className="space-y-3">{Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-24 bg-[hsl(var(--muted))] rounded-xl animate-pulse" />)}</div>
+            ) : schedule.length === 0 ? (
+              <p className="text-sm text-[hsl(var(--muted-foreground))] p-4 bg-[hsl(var(--muted)/0.3)] rounded-xl text-center">No schedule days added yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {schedule.map(day => (
+                  <div key={day.date} className="p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] relative group">
+                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => {
+                          setScheduleForm({
+                            date: day.date,
+                            day_title: day.day_title,
+                            description: day.description || '',
+                            speaker: day.speaker || '',
+                            start_time: day.start_time || '',
+                            end_time: day.end_time || ''
+                          })
+                          setIsEditingSchedule(true)
+                        }}
+                        className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500/20"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDeleteScheduleDay(day.date)} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20"><X className="w-4 h-4" /></button>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="flex flex-col items-center justify-center w-16 h-16 rounded-xl bg-blue-500/10 text-blue-500 shrink-0">
+                        <span className="text-xs font-bold uppercase">{new Date(day.date).toLocaleString('default', { month: 'short' })}</span>
+                        <span className="text-xl font-black">{new Date(day.date).getDate()}</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-lg">{day.day_title}</h4>
+                        {day.speaker && <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">By {day.speaker}</p>}
+                        {(day.start_time || day.end_time) && (
+                          <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+                            {day.start_time && day.start_time.substring(0, 5)} {day.start_time && day.end_time && '-'} {day.end_time && day.end_time.substring(0, 5)}
+                          </p>
+                        )}
+                        {day.description && <p className="text-sm mt-2 text-[hsl(var(--muted-foreground))] leading-relaxed">{day.description}</p>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
