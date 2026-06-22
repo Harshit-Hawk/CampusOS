@@ -677,7 +677,7 @@ export default function ManageEventPage() {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <h2 className="text-xl font-bold">Event Overview</h2>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 <button onClick={handleToggleFeedback} disabled={togglingFeedback} className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50 ${event.feedback_published ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20'}`}>
                   {togglingFeedback ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
                   {event.feedback_published ? 'Close Feedback' : 'Publish Feedback'}
@@ -724,12 +724,12 @@ export default function ManageEventPage() {
 
             {eventReport && eventReport.status === 'completed' && (
               <div className="mt-8">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                   <h3 className="text-lg font-bold flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-purple-500" />
-                    AI Post-Event Analysis
+                    <Sparkles className="w-5 h-5 text-purple-500 shrink-0" />
+                    <span className="break-words">AI Post-Event Analysis</span>
                   </h3>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                     <label className="cursor-pointer px-4 py-2 bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)] rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
                       {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
                       Add Photo
