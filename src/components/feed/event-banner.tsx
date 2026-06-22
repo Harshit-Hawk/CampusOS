@@ -134,10 +134,11 @@ function EventSlide({ event, isActive }: { event: EventBannerType, isActive: boo
 }
 
 export function EventBanner() {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(true)
   const [events, setEvents] = useState<EventBannerType[]>([])
   const [loading, setLoading] = useState(true)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -148,69 +149,70 @@ export function EventBanner() {
     load()
   }, [])
 
-  const extendedEvents = events.length > 1 ? [...events, events[0]] : events
-  const normalizedIndex = activeIndex >= events.length ? 0 : activeIndex
+  // Slides: [...real slides, clone of first]
+  const slides = events.length > 1 ? [...events, events[0]] : events
+  const totalSlides = slides.length
+  const realCount = events.length
 
-  // Handle scroll events to update active index
+  // The visual dot index (always 0..realCount-1)
+  const dotIndex = currentIndex >= realCount ? 0 : currentIndex
+
+  // When the transition to the clone (last slide) ends, snap instantly to index 0
+  const handleTransitionEnd = () => {
+    if (currentIndex === realCount) {
+      setIsTransitioning(false)
+      setCurrentIndex(0)
+    }
+  }
+
+  // Re-enable transitions after the instant snap
   useEffect(() => {
-    const handleScroll = () => {
-      if (!scrollRef.current) return
-      const scrollPosition = scrollRef.current.scrollLeft
-      const width = scrollRef.current.offsetWidth
-      const index = Math.round(scrollPosition / width)
-      setActiveIndex(index)
+    if (!isTransitioning && currentIndex === 0) {
+      // Use requestAnimationFrame to let the DOM paint at index 0 first, then re-enable transition
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsTransitioning(true)
+        })
+      })
     }
+  }, [isTransitioning, currentIndex])
 
-    const currentRef = scrollRef.current
-    if (currentRef) {
-      currentRef.addEventListener('scroll', handleScroll, { passive: true })
-    }
-    return () => {
-      if (currentRef) {
-        currentRef.removeEventListener('scroll', handleScroll)
-      }
-    }
-  }, [])
-
-  // Auto-play functionality
-  useEffect(() => {
+  // Reset auto-play timer helper
+  const resetTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current)
     if (events.length <= 1) return
-    const timer = setInterval(() => {
-      if (!scrollRef.current) return
-      
-      const width = scrollRef.current.offsetWidth
-      const currentScrollLeft = scrollRef.current.scrollLeft
-      const currentIndex = Math.round(currentScrollLeft / width)
-      
-      if (currentIndex === events.length) {
-        // Instantly jump to real first slide
-        scrollRef.current.scrollTo({ left: 0, behavior: 'auto' })
-        // Smooth scroll to second slide
-        setTimeout(() => {
-          if (!scrollRef.current) return
-          scrollRef.current.scrollTo({ left: width, behavior: 'smooth' })
-        }, 50)
-      } else {
-        // Smooth scroll to next slide (which might be the clone)
-        scrollRef.current.scrollTo({ left: width * (currentIndex + 1), behavior: 'smooth' })
-      }
+    timerRef.current = setInterval(() => {
+      setCurrentIndex(prev => prev + 1)
     }, 5000)
+  }
 
-    return () => clearInterval(timer)
+  // Auto-play
+  useEffect(() => {
+    resetTimer()
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
   }, [events.length])
 
-  const scrollTo = (index: number) => {
-    if (!scrollRef.current) return
-    const width = scrollRef.current.offsetWidth
-    scrollRef.current.scrollTo({ left: width * index, behavior: 'smooth' })
+  // Navigate to a specific real slide index (for dots)
+  const goToSlide = (index: number) => {
+    setIsTransitioning(true)
+    setCurrentIndex(index)
+    resetTimer()
   }
 
   const scrollNext = () => {
-    if (activeIndex < events.length - 1) scrollTo(activeIndex + 1)
+    if (currentIndex < realCount - 1) {
+      setCurrentIndex(prev => prev + 1)
+      resetTimer()
+    }
   }
 
   const scrollPrev = () => {
-    if (activeIndex > 0) scrollTo(activeIndex - 1)
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1)
+      resetTimer()
+    }
   }
 
   if (loading) return null
@@ -218,38 +220,46 @@ export function EventBanner() {
 
   return (
     <div className="relative w-full mb-8 animate-fade-in group">
-      {/* Scrollable Container */}
-      <div 
-        ref={scrollRef}
-        className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide rounded-2xl shadow-xl shadow-[hsl(var(--primary)/0.05)] bg-card border border-[hsl(var(--border)/0.5)]"
-        style={{ scrollBehavior: 'smooth' }}
-      >
-        {extendedEvents.map((event, index) => (
-          <EventSlide key={`${event.id}-${index}`} event={event} isActive={normalizedIndex === (index >= events.length ? 0 : index)} />
-        ))}
+      {/* Carousel Container */}
+      <div className="overflow-hidden rounded-2xl shadow-xl shadow-[hsl(var(--primary)/0.05)] bg-card border border-[hsl(var(--border)/0.5)]">
+        <div
+          className="flex"
+          style={{
+            transform: `translateX(-${currentIndex * 100}%)`,
+            transition: isTransitioning ? 'transform 700ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
+          }}
+          onTransitionEnd={handleTransitionEnd}
+        >
+          {slides.map((event, index) => (
+            <EventSlide key={`${event.id}-${index}`} event={event} isActive={dotIndex === (index >= realCount ? 0 : index)} />
+          ))}
+        </div>
       </div>
       
       {/* Navigation Arrows */}
-      <button 
-        onClick={scrollPrev}
-        className={cn(
-          "absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center backdrop-blur-md border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60 z-20",
-          activeIndex === 0 && "hidden"
-        )}
-      >
-        <ChevronLeft className="w-5 h-5" />
-      </button>
-      
-      <button 
-        onClick={scrollNext}
-        className={cn(
-          "absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center backdrop-blur-md border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60 z-20",
-          activeIndex === events.length - 1 && "hidden",
-          events.length <= 1 && "hidden"
-        )}
-      >
-        <ChevronRight className="w-5 h-5" />
-      </button>
+      {events.length > 1 && (
+        <>
+          <button 
+            onClick={scrollPrev}
+            className={cn(
+              "absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center backdrop-blur-md border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60 z-20",
+              currentIndex === 0 && "hidden"
+            )}
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          
+          <button 
+            onClick={scrollNext}
+            className={cn(
+              "absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center backdrop-blur-md border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60 z-20",
+              currentIndex >= realCount - 1 && "hidden"
+            )}
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </>
+      )}
 
       {/* Dots */}
       {events.length > 1 && (
@@ -257,10 +267,10 @@ export function EventBanner() {
           {events.map((_, i) => (
             <button 
               key={i} 
-              onClick={() => scrollTo(i)} 
+              onClick={() => goToSlide(i)} 
               className={cn(
                 "w-2 h-2 rounded-full transition-all duration-300",
-                normalizedIndex === i ? "bg-white w-4" : "bg-white/40 hover:bg-white/60"
+                dotIndex === i ? "bg-white w-4" : "bg-white/40 hover:bg-white/60"
               )}
             />
           ))}
