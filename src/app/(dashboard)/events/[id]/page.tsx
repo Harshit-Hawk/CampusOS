@@ -263,18 +263,35 @@ export default function EventDetailPage() {
             </div>
           </div>
 
-          {/* Faculty Coordinators */}
-          {event.faculty_coordinators && event.faculty_coordinators.length > 0 && (
-            <div className="mt-4 p-4 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.5)]">
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mb-3">Faculty Coordinator{event.faculty_coordinators.length > 1 ? 's' : ''}</p>
-              <div className="flex flex-wrap gap-2">
-                {event.faculty_coordinators.map((coordinator: string, idx: number) => (
-                  <span key={idx} className="text-sm font-medium px-3 py-1.5 bg-[hsl(var(--background))] border border-[hsl(var(--border)/0.5)] rounded-lg flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4 text-blue-500" />
-                    {coordinator}
-                  </span>
-                ))}
-              </div>
+          {/* Faculty & Student Coordinators */}
+          {(event.faculty_coordinators?.length > 0 || event.student_coordinators?.length > 0) && (
+            <div className="mt-4 p-4 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border)/0.5)] space-y-4">
+              {event.faculty_coordinators && event.faculty_coordinators.length > 0 && (
+                <div>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mb-2">Faculty Coordinator{event.faculty_coordinators.length > 1 ? 's' : ''}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {event.faculty_coordinators.map((coordinator: string, idx: number) => (
+                      <span key={`fac-${idx}`} className="text-sm font-medium px-3 py-1.5 bg-[hsl(var(--background))] border border-[hsl(var(--border)/0.5)] rounded-lg flex items-center gap-2">
+                        <GraduationCap className="w-4 h-4 text-blue-500" />
+                        {coordinator}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {event.student_coordinators && event.student_coordinators.length > 0 && (
+                <div>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mb-2">Student Coordinator{event.student_coordinators.length > 1 ? 's' : ''}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {event.student_coordinators.map((coordinator: string, idx: number) => (
+                      <span key={`stu-${idx}`} className="text-sm font-medium px-3 py-1.5 bg-[hsl(var(--background))] border border-[hsl(var(--border)/0.5)] rounded-lg flex items-center gap-2">
+                        <Users className="w-4 h-4 text-blue-400" />
+                        {coordinator}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

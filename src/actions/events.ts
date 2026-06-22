@@ -340,6 +340,12 @@ export async function createEvent(formData: FormData) {
   const faculty_coordinators = faculty_coordinators_str 
     ? faculty_coordinators_str.split(',').map(s => s.trim()).filter(Boolean)
     : []
+  
+  const student_coordinators_str = formData.get('student_coordinators') as string
+  const student_coordinators = student_coordinators_str
+    ? student_coordinators_str.split(',').map(s => s.trim()).filter(Boolean)
+    : []
+    
   const category = formData.get('category') as string || 'competitive'
   const min_team_size = parseInt(formData.get('min_team_size') as string) || 1
   const max_team_size = parseInt(formData.get('max_team_size') as string) || null
@@ -369,7 +375,7 @@ export async function createEvent(formData: FormData) {
       club_id, organizer_id: user.id, max_attendees,
       organizer_name, banner_url,
       is_team_event, min_team_size, max_team_size, is_club_only,
-      require_daily_attendance, faculty_coordinators, category
+      require_daily_attendance, faculty_coordinators, student_coordinators, category
     } as any)
     .select()
     .single()

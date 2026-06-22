@@ -217,15 +217,28 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Faculty Coordinators (Optional)</label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))]" />
-              <input
-                name="faculty_coordinators"
-                placeholder="e.g. Dr. Smith, Prof. Johnson (comma separated)"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm"
-              />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Faculty Coordinators (Optional)</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))]" />
+                <input
+                  name="faculty_coordinators"
+                  placeholder="e.g. Dr. Smith, Prof. Johnson (comma separated)"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Student Coordinators (Optional)</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))]" />
+                <input
+                  name="student_coordinators"
+                  placeholder="e.g. Alice, Bob (comma separated)"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm"
+                />
+              </div>
             </div>
           </div>
 
