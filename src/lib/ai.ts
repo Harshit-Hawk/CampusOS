@@ -142,6 +142,18 @@ export async function generateAIResponse(
 
 // Generate event report
 export async function generateEventReportAI(eventData: any): Promise<string> {
+  let customFeedbackPrompt = ''
+  if (eventData.customFeedbackSummary?.length > 0) {
+    customFeedbackPrompt = '\n\nCustom Feedback Questions & Responses:\n'
+    for (const q of eventData.customFeedbackSummary) {
+      if (q.type === 'rating') {
+        customFeedbackPrompt += `- "${q.question}" → Average Rating: ${q.avgRating}/5\n`
+      } else {
+        customFeedbackPrompt += `- "${q.question}" → Sample Responses: ${JSON.stringify(q.textResponses?.slice(0, 10))}\n`
+      }
+    }
+  }
+
   const prompt = `Analyze this event data and generate a comprehensive report:
 
 Event: ${eventData.title}
@@ -154,12 +166,12 @@ Department Breakdown: ${JSON.stringify(eventData.departmentBreakdown)}
 Feedback Average: ${eventData.avgFeedback}/5
 Volunteer Count: ${eventData.volunteerCount}
 Winners: ${JSON.stringify(eventData.winners)}
-
+${customFeedbackPrompt}
 Generate:
 1. Executive Summary (2-3 sentences)
 2. Key Metrics Analysis
 3. Department-wise Participation Analysis
-4. Feedback Summary
+4. Feedback Summary (include analysis of custom questions if provided)
 5. Success Metrics
 6. Areas for Improvement
 7. Recommendations for Future Events

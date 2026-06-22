@@ -5,7 +5,13 @@ import { X, Loader2, Star } from 'lucide-react'
 import { toast } from 'sonner'
 import { submitEventFeedback } from '@/actions/events'
 
-export function EventFeedbackModal({ eventId, open, onClose }: { eventId: string, open: boolean, onClose: () => void }) {
+interface CustomQuestion {
+  id: string
+  question: string
+  type: 'text' | 'rating'
+}
+
+export function EventFeedbackModal({ eventId, open, onClose, customQuestions = [] }: { eventId: string, open: boolean, onClose: () => void, customQuestions?: CustomQuestion[] }) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     overall_rating: 0,
@@ -16,6 +22,7 @@ export function EventFeedbackModal({ eventId, open, onClose }: { eventId: string
     suggestions: '',
     would_recommend: true
   })
+  const [customAnswers, setCustomAnswers] = useState<Record<string, string | number>>({})
 
   if (!open) return null
 
@@ -27,7 +34,10 @@ export function EventFeedbackModal({ eventId, open, onClose }: { eventId: string
     }
 
     setLoading(true)
-    const res = await submitEventFeedback(eventId, formData)
+    const res = await submitEventFeedback(eventId, {
+      ...formData,
+      custom_answers: customAnswers
+    })
     setLoading(false)
 
     if (res.error) {
@@ -49,6 +59,24 @@ export function EventFeedbackModal({ eventId, open, onClose }: { eventId: string
             className={`p-1 transition-colors ${Number(formData[field]) >= val ? 'text-amber-400' : 'text-[hsl(var(--muted-foreground))] hover:text-amber-400/50'}`}
           >
             <Star className={`w-6 h-6 ${Number(formData[field]) >= val ? 'fill-current' : ''}`} />
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  function renderCustomStars(questionId: string) {
+    const value = Number(customAnswers[questionId] || 0)
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((val) => (
+          <button
+            key={val}
+            type="button"
+            onClick={() => setCustomAnswers({ ...customAnswers, [questionId]: val })}
+            className={`p-1 transition-colors ${value >= val ? 'text-amber-400' : 'text-[hsl(var(--muted-foreground))] hover:text-amber-400/50'}`}
+          >
+            <Star className={`w-6 h-6 ${value >= val ? 'fill-current' : ''}`} />
           </button>
         ))}
       </div>
@@ -110,6 +138,28 @@ export function EventFeedbackModal({ eventId, open, onClose }: { eventId: string
                 placeholder="Any suggestions?"
               />
             </div>
+
+            {/* Custom Questions from Organizer */}
+            {customQuestions.length > 0 && (
+              <div className="space-y-4 pt-2 border-t border-[hsl(var(--border))]">
+                <p className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Additional Questions from Organizer</p>
+                {customQuestions.map((q) => (
+                  <div key={q.id}>
+                    <label className="block text-sm font-medium mb-2">{q.question}</label>
+                    {q.type === 'rating' ? (
+                      renderCustomStars(q.id)
+                    ) : (
+                      <textarea
+                        value={(customAnswers[q.id] as string) || ''}
+                        onChange={(e) => setCustomAnswers({ ...customAnswers, [q.id]: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-h-[80px]"
+                        placeholder="Your answer..."
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             <label className="flex items-center gap-3 p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] cursor-pointer">
               <input

@@ -7,7 +7,7 @@ import { fetchEventCertificates, issueCertificate } from '@/actions/certificates
 import { sendEventBroadcast, getEventBroadcasts } from '@/actions/communications'
 import { getEventReport } from '@/actions/ai'
 import { getInitials } from '@/lib/utils'
-import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode, Users, ChevronDown, ChevronUp, Download, Loader2, Trophy, Megaphone, Send, Sparkles, ImagePlus, Printer, FileText, LogOut, Calendar } from 'lucide-react'
+import { Shield, ClipboardCheck, HandHeart, Check, X, Award, Settings, ChevronLeft, QrCode, Users, ChevronDown, ChevronUp, Download, Loader2, Trophy, Megaphone, Send, Sparkles, ImagePlus, Printer, FileText, LogOut, Calendar, Plus, Trash2, Star, MessageSquare } from 'lucide-react'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -57,6 +57,8 @@ export default function ManageEventPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   const [togglingFeedback, setTogglingFeedback] = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [customQuestions, setCustomQuestions] = useState<{ id: string, question: string, type: 'text' | 'rating' }[]>([])
   
   const reportRef = useRef<HTMLDivElement>(null)
 
@@ -465,18 +467,51 @@ export default function ManageEventPage() {
   }
 
   async function handleToggleFeedback() {
+    if (!event.feedback_published) {
+      // Open the modal to configure custom questions before publishing
+      setCustomQuestions(event.feedback_questions || [])
+      setShowFeedbackModal(true)
+      return
+    }
+    // Close feedback
     setTogglingFeedback(true)
     try {
-      const newStatus = !event.feedback_published
-      const res = await publishEventFeedback(eventId, newStatus)
+      const res = await publishEventFeedback(eventId, false)
       if (res.error) throw new Error(res.error)
-      setEvent({ ...event, feedback_published: newStatus })
-      toast.success(newStatus ? 'Feedback form published!' : 'Feedback form closed')
+      setEvent({ ...event, feedback_published: false })
+      toast.success('Feedback form closed')
     } catch (e: any) {
-      toast.error(e.message || 'Failed to toggle feedback')
+      toast.error(e.message || 'Failed to close feedback')
     } finally {
       setTogglingFeedback(false)
     }
+  }
+
+  async function handlePublishFeedbackWithQuestions() {
+    setTogglingFeedback(true)
+    try {
+      const res = await publishEventFeedback(eventId, true, customQuestions)
+      if (res.error) throw new Error(res.error)
+      setEvent({ ...event, feedback_published: true, feedback_questions: customQuestions })
+      setShowFeedbackModal(false)
+      toast.success('Feedback form published with custom questions!')
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to publish feedback')
+    } finally {
+      setTogglingFeedback(false)
+    }
+  }
+
+  function addCustomQuestion() {
+    setCustomQuestions(prev => [...prev, { id: crypto.randomUUID(), question: '', type: 'text' }])
+  }
+
+  function removeCustomQuestion(id: string) {
+    setCustomQuestions(prev => prev.filter(q => q.id !== id))
+  }
+
+  function updateCustomQuestion(id: string, field: 'question' | 'type', value: string) {
+    setCustomQuestions(prev => prev.map(q => q.id === id ? { ...q, [field]: value } : q))
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1632,6 +1667,81 @@ export default function ManageEventPage() {
           </div>
         )}
       </div>
+
+      {/* Custom Feedback Questions Modal */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-[hsl(var(--border))] flex justify-between items-center bg-[hsl(var(--muted)/0.3)] shrink-0">
+              <div>
+                <h2 className="text-xl font-bold">Publish Feedback</h2>
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">Add custom questions for attendees (optional)</p>
+              </div>
+              <button onClick={() => setShowFeedbackModal(false)} className="p-2 rounded-full bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)] transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                Standard ratings (Overall, Content, Organization, Venue) are always included. Add custom questions below to gather specific feedback.
+              </p>
+
+              {customQuestions.map((q, i) => (
+                <div key={q.id} className="p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.2)] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Question {i + 1}</span>
+                    <button onClick={() => removeCustomQuestion(q.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <input
+                    value={q.question}
+                    onChange={(e) => updateCustomQuestion(q.id, 'question', e.target.value)}
+                    placeholder="e.g., How was the speaker?"
+                    className="w-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => updateCustomQuestion(q.id, 'type', 'text')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${q.type === 'text' ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30' : 'bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]'}`}
+                    >
+                      <MessageSquare className="w-3 h-3" /> Text Answer
+                    </button>
+                    <button
+                      onClick={() => updateCustomQuestion(q.id, 'type', 'rating')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${q.type === 'rating' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-[hsl(var(--muted)/0.5)] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]'}`}
+                    >
+                      <Star className="w-3 h-3" /> Star Rating
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                onClick={addCustomQuestion}
+                className="w-full py-3 rounded-xl border-2 border-dashed border-[hsl(var(--border))] text-sm font-medium text-[hsl(var(--muted-foreground))] hover:border-blue-500/50 hover:text-blue-500 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Add Custom Question
+              </button>
+            </div>
+
+            <div className="p-6 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] shrink-0 flex gap-3">
+              <button onClick={() => setShowFeedbackModal(false)} disabled={togglingFeedback} className="flex-1 py-3 px-4 rounded-xl text-sm font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.5)] transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={handlePublishFeedbackWithQuestions}
+                disabled={togglingFeedback || customQuestions.some(q => !q.question.trim())}
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50"
+              >
+                {togglingFeedback && <Loader2 className="w-4 h-4 animate-spin" />}
+                {togglingFeedback ? 'Publishing...' : `Publish${customQuestions.length > 0 ? ` with ${customQuestions.length} Question${customQuestions.length > 1 ? 's' : ''}` : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

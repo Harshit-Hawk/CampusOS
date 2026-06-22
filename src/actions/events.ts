@@ -768,7 +768,7 @@ export async function removeEventWinner(eventId: string, placement: number) {
   return { success: true }
 }
 
-export async function publishEventFeedback(eventId: string, published: boolean) {
+export async function publishEventFeedback(eventId: string, published: boolean, questions?: { id: string, question: string, type: 'text' | 'rating' }[]) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
@@ -783,9 +783,14 @@ export async function publishEventFeedback(eventId: string, published: boolean) 
     return { error: 'Unauthorized' }
   }
 
+  const updatePayload: any = { feedback_published: published }
+  if (published && questions) {
+    updatePayload.feedback_questions = questions
+  }
+
   const { error } = await supabase
     .from('events')
-    .update({ feedback_published: published })
+    .update(updatePayload)
     .eq('id', eventId)
 
   if (error) return { error: error.message }
@@ -799,7 +804,8 @@ export async function submitEventFeedback(eventId: string, payload: {
   venue_rating: number,
   comments: string,
   suggestions: string,
-  would_recommend: boolean
+  would_recommend: boolean,
+  custom_answers?: Record<string, string | number>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -816,7 +822,8 @@ export async function submitEventFeedback(eventId: string, payload: {
       venue_rating: payload.venue_rating,
       comments: payload.comments,
       suggestions: payload.suggestions,
-      would_recommend: payload.would_recommend
+      would_recommend: payload.would_recommend,
+      custom_answers: payload.custom_answers || {}
     }, { onConflict: 'event_id, user_id' })
 
   if (error) return { error: error.message }

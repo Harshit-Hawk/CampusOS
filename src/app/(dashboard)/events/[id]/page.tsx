@@ -196,6 +196,7 @@ export default function EventDetailPage() {
           eventId={eventId}
           open={showFeedbackModal}
           onClose={() => setShowFeedbackModal(false)}
+          customQuestions={event.feedback_questions || []}
         />
       )}
 

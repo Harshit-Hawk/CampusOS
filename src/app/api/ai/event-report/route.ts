@@ -97,6 +97,33 @@ export async function POST(request: NextRequest) {
         position: w.position,
       })) || [],
       totalFeedbackResponses: feedback?.length || 0,
+      customFeedbackSummary: [] as { question: string, type: string, avgRating?: string, textResponses?: string[] }[],
+    }
+
+    // Aggregate custom feedback answers
+    const feedbackQuestions = event.feedback_questions || []
+    if (feedbackQuestions.length > 0 && feedback?.length) {
+      for (const q of feedbackQuestions) {
+        const answers = feedback
+          .map((f: any) => f.custom_answers?.[q.id])
+          .filter((a: any) => a !== undefined && a !== null && a !== '')
+
+        if (q.type === 'rating') {
+          const numericAnswers = answers.map(Number).filter((n: number) => !isNaN(n))
+          const avg = numericAnswers.length ? (numericAnswers.reduce((s: number, v: number) => s + v, 0) / numericAnswers.length) : 0
+          eventData.customFeedbackSummary.push({
+            question: q.question,
+            type: 'rating',
+            avgRating: avg.toFixed(1),
+          })
+        } else {
+          eventData.customFeedbackSummary.push({
+            question: q.question,
+            type: 'text',
+            textResponses: answers.slice(0, 20) as string[], // cap at 20 for prompt size
+          })
+        }
+      }
     }
 
     // Generate AI summary
@@ -124,6 +151,7 @@ export async function POST(request: NextRequest) {
         hours: v.hours_logged,
         rating: v.performance_rating,
       })),
+      custom_feedback: eventData.customFeedbackSummary,
     }
 
     await supabase
