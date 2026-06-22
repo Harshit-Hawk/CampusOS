@@ -12,10 +12,6 @@ import { Scanner } from '@yudiel/react-qr-scanner'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js'
-import { Line } from 'react-chartjs-2'
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 export default function ManageEventPage() {
   const params = useParams()
@@ -725,81 +721,6 @@ export default function ManageEventPage() {
                 </div>
               </div>
             )}
-
-            {/* Incremental Check-ins Graph */}
-            {checkedInList.length > 0 && (
-              <div className="mt-6 p-6 glass rounded-2xl">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <Users className="w-5 h-5 text-sky-500" /> Check-in Trend
-                </h3>
-                <div className="h-48 w-full mt-2">
-                  {(() => {
-                    const sorted = [...checkedInList].sort((a, b) => new Date(a.check_in_time).getTime() - new Date(b.check_in_time).getTime())
-                    const buckets: Record<string, number> = {}
-                    let cumulative = 0
-                    sorted.forEach(c => {
-                      const date = new Date(c.check_in_time)
-                      const mins = date.getMinutes()
-                      const roundedMins = mins < 30 ? '00' : '30'
-                      const timeKey = `${date.getHours().toString().padStart(2, '0')}:${roundedMins}`
-                      cumulative++
-                      buckets[timeKey] = cumulative
-                    })
-                    // Prepend a "Start" baseline at 0 so a line always draws even with 1 check-in
-                    const timeKeys = Object.keys(buckets).sort()
-                    const labels = ['Start', ...timeKeys]
-                    const checkinData = [0, ...timeKeys.map(k => buckets[k])]
-                    
-                    return (
-                      <Line 
-                        data={{
-                          labels,
-                          datasets: [
-                            {
-                              label: 'Total Checked-In',
-                              data: checkinData,
-                              borderColor: 'rgba(16, 185, 129, 1)', // Emerald for checkins
-                              borderWidth: 2,
-                              pointRadius: 0,
-                              pointHoverRadius: 6,
-                              fill: false,
-                              tension: 0
-                            },
-                            ...(event.max_attendees ? [{
-                              label: 'Capacity Baseline',
-                              data: Array(labels.length).fill(event.max_attendees),
-                              borderColor: 'rgba(156, 163, 175, 0.8)',
-                              borderWidth: 2,
-                              borderDash: [5, 5],
-                              pointRadius: 0,
-                              pointHoverRadius: 0,
-                              fill: false,
-                              tension: 0
-                            }] : [])
-                          ]
-                        }}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: { 
-                            legend: { 
-                              position: 'bottom',
-                              labels: { usePointStyle: true, boxWidth: 6, font: { size: 11 } }
-                            } 
-                          },
-                          scales: {
-                            y: { display: false, min: 0, suggestedMax: event.max_attendees ? event.max_attendees * 1.1 : undefined },
-                            x: { display: false }
-                          },
-                          interaction: { mode: 'index', intersect: false }
-                        }}
-                      />
-                    )
-                  })()}
-                </div>
-              </div>
-            )}
-
 
             {eventReport && eventReport.status === 'completed' && (
               <div className="mt-8">
