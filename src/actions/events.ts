@@ -16,7 +16,7 @@ export async function fetchEvents(filter?: string) {
   const now = new Date().toISOString()
 
   if (filter === 'upcoming') {
-    query = query.gte('start_date', now)
+    query = query.gte('end_date', now)
   } else if (filter === 'club-organized') {
     query = query.not('club_id', 'is', null)
   } else if (filter === 'past') {
