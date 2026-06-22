@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { getInitials, formatRelativeTime, cn } from '@/lib/utils'
 import { getStageTitle } from '@/lib/constants'
 import { VerifiedBadge } from '@/components/ui/verified-badge'
-import { MapPin, Calendar, Users, UserPlus, UserMinus, ArrowLeft, Loader2, Clock, HandHeart, Check, Settings, QrCode, X, Bookmark, Share2, Bell, Trophy, Megaphone, Star, GraduationCap } from 'lucide-react'
+import { MapPin, Calendar, Users, UserPlus, UserMinus, ArrowLeft, Loader2, Clock, HandHeart, Check, Settings, QrCode, X, Bookmark, Share2, Bell, Trophy, Megaphone, Star, GraduationCap, PieChart } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -571,6 +571,52 @@ export default function EventDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Admin/Faculty Department Breakdown Graph - Main Column */}
+          {(userRole === 'admin' || userRole === 'faculty') && attendees.length > 0 && (
+            <div className="glass rounded-2xl p-6">
+              <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-purple-500" /> Department Breakdown
+              </h2>
+              <div className="h-64 w-full relative flex items-center justify-center">
+                <Doughnut 
+                  data={{
+                    labels: Object.keys(attendees.reduce((acc, a) => {
+                      const dept = a.profiles?.department || 'Unknown'
+                      acc[dept] = (acc[dept] || 0) + 1
+                      return acc
+                    }, {} as Record<string, number>)),
+                    datasets: [{
+                      data: Object.values(attendees.reduce((acc, a) => {
+                        const dept = a.profiles?.department || 'Unknown'
+                        acc[dept] = (acc[dept] || 0) + 1
+                        return acc
+                      }, {} as Record<string, number>)),
+                      backgroundColor: [
+                        'rgba(59, 130, 246, 0.8)', // blue
+                        'rgba(16, 185, 129, 0.8)', // emerald
+                        'rgba(245, 158, 11, 0.8)', // amber
+                        'rgba(139, 92, 246, 0.8)', // violet
+                        'rgba(236, 72, 153, 0.8)', // pink
+                        'rgba(99, 102, 241, 0.8)', // indigo
+                      ],
+                      borderWidth: 0,
+                    }]
+                  }} 
+                  options={{
+                    plugins: {
+                      legend: { 
+                        position: 'right', 
+                        labels: { color: 'hsl(var(--foreground))', font: { size: 12 }, usePointStyle: true, padding: 20 } 
+                      }
+                    },
+                    cutout: '70%',
+                    maintainAspectRatio: false,
+                  }} 
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="md:col-span-1 space-y-6">
@@ -609,46 +655,6 @@ export default function EventDetailPage() {
             </div>
             {attendees.length === 0 && <p className="text-sm text-[hsl(var(--muted-foreground))]">No attendees yet. Be the first!</p>}
 
-            {/* Admin/Faculty Department Breakdown Graph */}
-            {(userRole === 'admin' || userRole === 'faculty') && attendees.length > 0 && (
-              <div className="mt-6 pt-6 border-t border-[hsl(var(--border))]">
-                <h4 className="text-sm font-semibold mb-4 text-[hsl(var(--muted-foreground))]">Department Breakdown</h4>
-                <div className="h-48 w-full relative">
-                  <Doughnut 
-                    data={{
-                      labels: Object.keys(attendees.reduce((acc, a) => {
-                        const dept = a.profiles?.department || 'Unknown'
-                        acc[dept] = (acc[dept] || 0) + 1
-                        return acc
-                      }, {} as Record<string, number>)),
-                      datasets: [{
-                        data: Object.values(attendees.reduce((acc, a) => {
-                          const dept = a.profiles?.department || 'Unknown'
-                          acc[dept] = (acc[dept] || 0) + 1
-                          return acc
-                        }, {} as Record<string, number>)),
-                        backgroundColor: [
-                          'rgba(59, 130, 246, 0.8)', // blue
-                          'rgba(16, 185, 129, 0.8)', // emerald
-                          'rgba(245, 158, 11, 0.8)', // amber
-                          'rgba(139, 92, 246, 0.8)', // violet
-                          'rgba(236, 72, 153, 0.8)', // pink
-                          'rgba(99, 102, 241, 0.8)', // indigo
-                        ],
-                        borderWidth: 0,
-                      }]
-                    }} 
-                    options={{
-                      plugins: {
-                        legend: { position: 'right', labels: { color: 'hsl(var(--foreground))', font: { size: 10 } } }
-                      },
-                      cutout: '70%',
-                      maintainAspectRatio: false,
-                    }} 
-                  />
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
