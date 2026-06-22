@@ -21,11 +21,11 @@ export function EventCard({ event, index }: EventCardProps) {
       style={{ opacity: 0, animationDelay: `${index * 0.05}s` }}
     >
       {/* Banner */}
-      <div className={`h-32 relative ${event.banner_url ? 'bg-[hsl(var(--muted))] flex items-center justify-center' : 'gradient-accent'}`}>
+      <div className={`aspect-video relative ${event.banner_url ? 'bg-[hsl(var(--muted))] flex items-center justify-center' : 'gradient-accent'}`}>
         <img 
           src={event.banner_url || '/default-event-banner.png'} 
           alt="" 
-          className={`w-full h-full ${event.banner_url ? 'object-contain' : 'object-cover'}`} 
+          className="w-full h-full object-cover" 
         />
         <div className="absolute top-3 right-3 flex gap-2">
           {isPast && (
