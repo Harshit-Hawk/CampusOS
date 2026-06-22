@@ -40,7 +40,10 @@ export default function FeedPage() {
         setPosts(result.posts as PostWithAuthor[])
         if (result.userRole) setUserRole(result.userRole)
       } else {
-        setPosts(prev => [...prev, ...(result.posts as PostWithAuthor[])])
+        setPosts(prev => {
+          const newPosts = (result.posts as PostWithAuthor[]).filter(newP => !prev.some(p => p.id === newP.id))
+          return [...prev, ...newPosts]
+        })
       }
       setHasMore(result.posts.length >= 10)
     }
@@ -68,7 +71,10 @@ export default function FeedPage() {
           // A new post was created - fetch its full details (including profile/likes)
           const { post } = await fetchPostById(payload.new.id)
           if (post) {
-            setPosts(prev => [post as PostWithAuthor, ...prev])
+            setPosts(prev => {
+              if (prev.some(p => p.id === post.id)) return prev;
+              return [post as PostWithAuthor, ...prev]
+            })
           }
         } else if (payload.eventType === 'DELETE') {
           setPosts(prev => prev.filter(p => p.id !== payload.old.id))
@@ -88,7 +94,10 @@ export default function FeedPage() {
   }, [])
 
   const handlePostCreated = (newPost: PostWithAuthor) => {
-    setPosts(prev => [newPost, ...prev])
+    setPosts(prev => {
+      if (prev.some(p => p.id === newPost.id)) return prev;
+      return [newPost, ...prev]
+    })
   }
 
   const handlePostLiked = (postId: string, liked: boolean) => {
