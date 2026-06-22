@@ -1619,7 +1619,7 @@ export default function ManageEventPage() {
                         {day.speaker && <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">By {day.speaker}</p>}
                         {(day.start_time || day.end_time) && (
                           <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
-                            {day.start_time && day.start_time.substring(0, 5)} {day.start_time && day.end_time && '-'} {day.end_time && day.end_time.substring(0, 5)}
+                            {day.start_time && new Date(`2000-01-01T${day.start_time}${day.start_time.length === 5 ? ':00' : ''}`).toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'})} {day.start_time && day.end_time && '-'} {day.end_time && new Date(`2000-01-01T${day.end_time}${day.end_time.length === 5 ? ':00' : ''}`).toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'})}
                           </p>
                         )}
                         {day.description && <p className="text-sm mt-2 text-[hsl(var(--muted-foreground))] leading-relaxed">{day.description}</p>}
