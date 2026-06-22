@@ -75,7 +75,7 @@ export default function ManageEventPage() {
   // Schedule State
   const [schedule, setSchedule] = useState<any[]>([])
   const [loadingSchedule, setLoadingSchedule] = useState(false)
-  const [scheduleForm, setScheduleForm] = useState({ date: '', day_title: '', description: '', speaker: '', start_time: '', end_time: '' })
+  const [scheduleForm, setScheduleForm] = useState({ date: '', day_title: '', description: '', speaker: '', start_time: '', end_time: '', faculty_coordinators: '', student_coordinators: '' })
   const [isEditingSchedule, setIsEditingSchedule] = useState(false)
   const [savingSchedule, setSavingSchedule] = useState(false)
 
@@ -506,13 +506,18 @@ export default function ManageEventPage() {
   async function handleSaveScheduleDay(e: React.FormEvent) {
     e.preventDefault()
     setSavingSchedule(true)
-    const res = await upsertScheduleDay(eventId, scheduleForm)
+    const payload = {
+      ...scheduleForm,
+      faculty_coordinators: scheduleForm.faculty_coordinators ? scheduleForm.faculty_coordinators.split(',').map(s => s.trim()).filter(Boolean) : [],
+      student_coordinators: scheduleForm.student_coordinators ? scheduleForm.student_coordinators.split(',').map(s => s.trim()).filter(Boolean) : []
+    }
+    const res = await upsertScheduleDay(eventId, payload)
     setSavingSchedule(false)
     if (res.error) toast.error(res.error)
     else {
       toast.success('Schedule day saved successfully!')
       setIsEditingSchedule(false)
-      setScheduleForm({ date: '', day_title: '', description: '', speaker: '', start_time: '', end_time: '' })
+      setScheduleForm({ date: '', day_title: '', description: '', speaker: '', start_time: '', end_time: '', faculty_coordinators: '', student_coordinators: '' })
       fetchEventSchedule(eventId).then(r => setSchedule(r.schedule || []))
     }
   }
@@ -1481,7 +1486,7 @@ export default function ManageEventPage() {
               </div>
               <button 
                 onClick={() => {
-                  setScheduleForm({ date: event.start_date.split('T')[0], day_title: '', description: '', speaker: '', start_time: '', end_time: '' })
+                  setScheduleForm({ date: event.start_date.split('T')[0], day_title: '', description: '', speaker: '', start_time: '', end_time: '', faculty_coordinators: '', student_coordinators: '' })
                   setIsEditingSchedule(true)
                 }}
                 className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors"
@@ -1509,6 +1514,14 @@ export default function ManageEventPage() {
                   <div>
                     <label className="block text-xs font-medium mb-1">Speaker (Optional)</label>
                     <input type="text" value={scheduleForm.speaker} onChange={e => setScheduleForm({...scheduleForm, speaker: e.target.value})} placeholder="e.g. John Doe" className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Faculty Coordinators (Optional)</label>
+                    <input type="text" value={scheduleForm.faculty_coordinators} onChange={e => setScheduleForm({...scheduleForm, faculty_coordinators: e.target.value})} placeholder="e.g. Dr. Smith (comma separated)" className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Student Coordinators (Optional)</label>
+                    <input type="text" value={scheduleForm.student_coordinators} onChange={e => setScheduleForm({...scheduleForm, student_coordinators: e.target.value})} placeholder="e.g. Alice, Bob (comma separated)" className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm" />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -1548,7 +1561,9 @@ export default function ManageEventPage() {
                             description: day.description || '',
                             speaker: day.speaker || '',
                             start_time: day.start_time || '',
-                            end_time: day.end_time || ''
+                            end_time: day.end_time || '',
+                            faculty_coordinators: day.faculty_coordinators?.join(', ') || '',
+                            student_coordinators: day.student_coordinators?.join(', ') || ''
                           })
                           setIsEditingSchedule(true)
                         }}

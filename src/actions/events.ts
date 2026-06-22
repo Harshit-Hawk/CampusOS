@@ -962,6 +962,8 @@ export async function upsertScheduleDay(eventId: string, payload: {
   speaker?: string
   start_time?: string
   end_time?: string
+  faculty_coordinators?: string[]
+  student_coordinators?: string[]
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -977,6 +979,8 @@ export async function upsertScheduleDay(eventId: string, payload: {
       speaker: payload.speaker || null,
       start_time: payload.start_time || null,
       end_time: payload.end_time || null,
+      faculty_coordinators: payload.faculty_coordinators || [],
+      student_coordinators: payload.student_coordinators || [],
     }, { onConflict: 'event_id, date' })
 
   if (error) return { error: error.message }

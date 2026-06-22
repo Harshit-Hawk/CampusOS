@@ -366,6 +366,28 @@ export default function EventDetailPage() {
                           )}
                           {day.description && <p className="text-sm mt-2 text-[hsl(var(--muted-foreground))] leading-relaxed">{day.description}</p>}
                           
+                          {/* Day Coordinators */}
+                          {(day.faculty_coordinators?.length > 0 || day.student_coordinators?.length > 0) && (
+                            <div className="mt-3 pt-3 border-t border-[hsl(var(--border)/0.5)] space-y-2">
+                              {day.faculty_coordinators && day.faculty_coordinators.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 items-center">
+                                  <GraduationCap className="w-3.5 h-3.5 text-blue-500" />
+                                  {day.faculty_coordinators.map((c: string, i: number) => (
+                                    <span key={`fac-${i}`} className="text-[10px] font-medium px-2 py-0.5 bg-[hsl(var(--muted))] rounded-md">{c}</span>
+                                  ))}
+                                </div>
+                              )}
+                              {day.student_coordinators && day.student_coordinators.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 items-center">
+                                  <Users className="w-3.5 h-3.5 text-blue-400" />
+                                  {day.student_coordinators.map((c: string, i: number) => (
+                                    <span key={`stu-${i}`} className="text-[10px] font-medium px-2 py-0.5 bg-[hsl(var(--muted))] rounded-md">{c}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
                           {/* Attendance for this day */}
                           {event.require_daily_attendance && isRegistered && (
                             <div className="mt-4 pt-3 border-t border-[hsl(var(--border)/0.5)] flex items-center gap-4 text-xs font-medium">
