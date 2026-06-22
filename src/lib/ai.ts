@@ -154,29 +154,42 @@ export async function generateEventReportAI(eventData: any): Promise<string> {
     }
   }
 
-  const prompt = `Analyze this event data and generate a comprehensive report:
+  const prompt = `You are an expert Event Data Analyst. Your objective is to analyze the provided event data and generate a highly professional, well-structured, and insightful post-event report.
 
-Event: ${eventData.title}
-Date: ${eventData.start_date} to ${eventData.end_date}
-Location: ${eventData.location}
-Total Registrations: ${eventData.registrations}
-Total Check-ins: ${eventData.checkins}
-Attendance Rate: ${eventData.attendanceRate}%
-Department Breakdown: ${JSON.stringify(eventData.departmentBreakdown)}
-Feedback Average: ${eventData.avgFeedback}/5
-Volunteer Count: ${eventData.volunteerCount}
-Winners: ${JSON.stringify(eventData.winners)}
+Please strictly follow this Markdown structure and provide analytical depth, not just raw numbers:
+
+# 📊 Post-Event Analysis Report: ${eventData.title}
+
+## 1. Executive Summary
+Provide a concise, high-level overview of the event's execution, overall attendance, and general reception (2-3 sentences). Highlight the most critical success factor or biggest takeaway.
+
+## 2. Key Metrics & Engagement Analysis
+Analyze the core numbers. Discuss the conversion rate from registrations (${eventData.registrations}) to actual check-ins (${eventData.checkins}), representing an attendance rate of ${eventData.attendanceRate}%. Mention volunteer involvement (${eventData.volunteerCount} volunteers) and its impact.
+
+## 3. Department-wise Participation
+Analyze the department breakdown: ${JSON.stringify(eventData.departmentBreakdown)}. Which departments showed the most interest? What does this mean for future targeting?
+
+## 4. Participant Feedback & Sentiment
+Analyze the overall feedback average of ${eventData.avgFeedback}/5. 
+If custom feedback questions are provided below, provide a detailed thematic analysis of the responses. Summarize what participants loved and what they didn't.
+
+## 5. Success Metrics & Highlights
+List 3 to 4 major achievements of this event (e.g., high attendance rate, exceptional feedback in a specific area, smooth operations). Use bullet points.
+
+## 6. Areas for Improvement
+Identify 2 to 3 constructive areas where the event could be optimized in the future (e.g., low turnout from a specific department, feedback complaints, registration drop-offs).
+
+## 7. Strategic Recommendations
+Provide 3 actionable, forward-looking recommendations for the organizing committee to improve their next event based on this data.
+
+---
+**Raw Event Data for Reference:**
+- **Date:** ${eventData.start_date} to ${eventData.end_date}
+- **Location:** ${eventData.location}
+- **Winners:** ${JSON.stringify(eventData.winners)}
 ${customFeedbackPrompt}
-Generate:
-1. Executive Summary (2-3 sentences)
-2. Key Metrics Analysis
-3. Department-wise Participation Analysis
-4. Feedback Summary (include analysis of custom questions if provided)
-5. Success Metrics
-6. Areas for Improvement
-7. Recommendations for Future Events
 
-Format in markdown.`
+Maintain a formal, encouraging, and highly analytical tone throughout the report.`
 
   try {
     const result = await geminiModel.generateContent(prompt)
