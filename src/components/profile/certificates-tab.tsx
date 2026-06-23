@@ -323,7 +323,7 @@ function UploadCertificateModal({ isOpen, onClose, onUploaded }: {
             className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-[hsl(var(--foreground))] mb-1.5">Issuer *</label>
             <input
@@ -355,7 +355,7 @@ function UploadCertificateModal({ isOpen, onClose, onUploaded }: {
             className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-[hsl(var(--foreground))] mb-1.5">Credential ID</label>
             <input

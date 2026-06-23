@@ -143,7 +143,7 @@ function AdminWalletView() {
                   <label className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mb-1 block">Description</label>
                   <textarea required name="description" className="w-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-colors resize-none h-20" placeholder="Details about the item..." />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mb-1 block">Cost (CC)</label>
                     <input required type="number" min="1" name="cost" className="w-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-colors" placeholder="500" />
@@ -329,7 +329,7 @@ function StudentWalletView() {
               {loading ? (
                 <div className="w-32 h-10 bg-[hsl(var(--muted))] animate-pulse rounded-lg mt-2"></div>
               ) : (
-                <h2 className="text-5xl font-black tracking-tight text-[hsl(var(--foreground))]">
+                <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-[hsl(var(--foreground))]">
                   {balance}
                   <span className="text-xl font-bold text-[hsl(var(--muted-foreground))] ml-2">CC</span>
                 </h2>

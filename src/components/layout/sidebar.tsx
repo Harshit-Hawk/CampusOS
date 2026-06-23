@@ -103,11 +103,12 @@ interface SidebarProps {
   user: Profile | null
   mobileOpen?: boolean
   setMobileOpen?: (open: boolean) => void
+  collapsed: boolean
+  setCollapsed: (collapsed: boolean) => void
 }
 
-export function Sidebar({ user, mobileOpen, setMobileOpen }: SidebarProps) {
+export function Sidebar({ user, mobileOpen, setMobileOpen, collapsed, setCollapsed }: SidebarProps) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
 
   const getInitials = (name?: string) => {
     if (!name) return '?'

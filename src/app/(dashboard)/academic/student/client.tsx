@@ -530,7 +530,7 @@ function DetailedAttendanceView({ stat, onBack }: { stat: any, onBack: () => voi
 
           {/* Sessions List Table */}
           <div className="glass-panel rounded-2xl overflow-hidden shadow-sm">
-            <div className="grid grid-cols-3 p-3 bg-[hsl(var(--muted)/0.5)] border-b border-[hsl(var(--border)/0.5)] text-xs font-bold text-[hsl(var(--muted-foreground))]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 p-3 bg-[hsl(var(--muted)/0.5)] border-b border-[hsl(var(--border)/0.5)] text-xs font-bold text-[hsl(var(--muted-foreground))]">
               <div>Date / Time</div>
               <div>Status</div>
               <div className="hidden sm:block">Marked from</div>

@@ -77,7 +77,7 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
 
       <Modal isOpen={open && mounted} onClose={() => setOpen(false)} title="Create a New Event" maxWidth="max-w-lg">
         <form action={handleSubmit} className="space-y-4" id="create-event-form">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Event Title</label>
               <div className="relative">
@@ -136,7 +136,7 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Start Date & Time</label>
               <input
@@ -157,7 +157,7 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Location</label>
               <div className="relative">
@@ -184,7 +184,7 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Capacity (Optional)</label>
               <div className="relative">
@@ -217,7 +217,7 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Faculty Coordinators (Optional)</label>
               <div className="relative">
@@ -287,7 +287,7 @@ export function CreateEventModal({ clubs }: CreateEventModalProps) {
           </div>
 
           {isTeamEvent && (
-            <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))]">
               <div>
                 <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Min Team Size</label>
                 <div className="relative">

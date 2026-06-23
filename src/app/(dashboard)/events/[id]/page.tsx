@@ -391,7 +391,7 @@ export default function EventDetailPage() {
                           
                           {/* Attendance for this day */}
                           {event.require_daily_attendance && isRegistered && (
-                            <div className="mt-4 pt-3 border-t border-[hsl(var(--border)/0.5)] flex items-center gap-4 text-xs font-medium">
+                            <div className="mt-4 pt-3 border-t border-[hsl(var(--border)/0.5)] flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium">
                               <span className="text-[hsl(var(--muted-foreground))]">Your Attendance:</span>
                               <span className="flex items-center gap-1.5">
                                 <span className={`w-2 h-2 rounded-full ${log?.check_in_time ? 'bg-green-500' : 'bg-[hsl(var(--muted-foreground))]'}`}></span>
@@ -414,7 +414,7 @@ export default function EventDetailPage() {
                   {userAttendanceLogs.map((log) => (
                     <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-[hsl(var(--background))] rounded-xl border border-[hsl(var(--border)/0.5)] text-sm">
                       <span className="font-medium">{format(new Date(log.date), 'MMM dd, yyyy')}</span>
-                      <div className="flex items-center gap-4 mt-2 sm:mt-0 text-[hsl(var(--muted-foreground))]">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 sm:mt-0 text-[hsl(var(--muted-foreground))]">
                         <span className="flex items-center gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-green-500"></span>
                           In: {log.check_in_time ? format(new Date(log.check_in_time), 'h:mm a') : '--'}

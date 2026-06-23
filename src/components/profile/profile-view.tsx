@@ -444,7 +444,7 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
 
       {/* Quick Stats Row */}
       {isAdminOrFaculty && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5 animate-fade-in stagger-1" style={{ opacity: 0 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 animate-fade-in stagger-1" style={{ opacity: 0 }}>
           <AdminStatBox icon={Shield} title="System Role" value={<span className="capitalize">{profile.role}</span>} />
           <AdminStatBox 
             icon={profile.role === 'admin' ? Building : BookOpen} 
@@ -583,7 +583,7 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
             <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Bio</label>
             <textarea name="bio" defaultValue={profile.bio || ''} rows={3} className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm resize-none" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {profile.role !== 'admin' && profile.role !== 'faculty' && (
               <div>
                 <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Course</label>
@@ -603,7 +603,7 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
             </div>
           </div>
           {profile.role !== 'admin' && profile.role !== 'faculty' && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Year</label>
                 <input name="year" type="number" min={1} max={6} defaultValue={profile.year || ''} className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm" />
@@ -689,7 +689,7 @@ function PortfolioTab({
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Portfolio Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatBox icon={Award} title="XP Points" value={profile?.xp_points || 0} iconColor="text-amber-500" bg="bg-amber-500/10" />
         <StatBox icon={Medal} title="Certificates Verified" value={portfolio?.certificates?.length || 0} iconColor="text-emerald-500" bg="bg-emerald-500/10" />
         <StatBox icon={Users} title="Clubs Joined" value={portfolio?.clubs?.length || 0} iconColor="text-purple-500" bg="bg-purple-500/10" />
