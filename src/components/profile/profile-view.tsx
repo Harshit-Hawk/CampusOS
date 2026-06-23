@@ -327,7 +327,9 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
                 {/* Bio Details */}
                 <div className="space-y-0.5 font-medium mb-3">
                   <p>
-                    {profile.role === 'admin' || profile.role === 'faculty' 
+                    {profile.role === 'faculty'
+                      ? [profile.designation, profile.department, profile.college].filter(Boolean).join(' · ')
+                      : profile.role === 'admin' 
                       ? (profile.department || 'Department')
                       : `${profile.course || 'Course'} · ${profile.department || 'Department'}`
                     }
@@ -539,7 +541,7 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
       {/* Edit Dialog */}
       <Modal isOpen={editing} onClose={() => setEditing(false)} title="Edit Profile" maxWidth="max-w-md">
         <form onSubmit={handleSave} className="space-y-4">
-          {profile.role !== 'admin' ? (
+          {profile.role !== 'admin' && profile.role !== 'faculty' ? (
             <div>
               <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))] flex items-center justify-between">
                 Roll No
@@ -583,6 +585,23 @@ export function ProfileView({ profile: initialProfile, isOwnProfile }: ProfileVi
             <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Bio</label>
             <textarea name="bio" defaultValue={profile.bio || ''} rows={3} className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm resize-none" />
           </div>
+          {profile.role === 'faculty' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Designation</label>
+                <input name="designation" placeholder="e.g. Assistant Professor" defaultValue={profile.designation || ''} required className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">College</label>
+                <select name="college" defaultValue={profile.college || ''} required className="w-full px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-transparent focus:border-[hsl(var(--ring)/0.5)] focus:ring-2 focus:ring-[hsl(var(--ring)/0.5)] outline-none transition-all text-sm appearance-none">
+                  <option value="">Select College...</option>
+                  <option value="Gateway Institute of Engineering & Technology (GIET)">Gateway Institute of Engineering & Technology (GIET)</option>
+                  <option value="Gateway College of Architecture (GCAD)">Gateway College of Architecture (GCAD)</option>
+                  <option value="Gateway College of Pharmacy (GCP)">Gateway College of Pharmacy (GCP)</option>
+                </select>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {profile.role !== 'admin' && profile.role !== 'faculty' && (
               <div>

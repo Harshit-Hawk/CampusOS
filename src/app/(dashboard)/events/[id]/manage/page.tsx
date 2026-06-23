@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, fetchAllDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner, processSmartScan, deleteEvent, fetchEventSchedule, upsertScheduleDay, deleteScheduleDay } from '@/actions/events'
+import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, fetchAllDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner, processSmartScan, deleteEvent, fetchEventSchedule, upsertScheduleDay, deleteScheduleDay, updateEventTiming, grantFacultyAccess } from '@/actions/events'
 import { fetchEventCertificates, issueCertificate } from '@/actions/certificates'
 import { sendEventBroadcast, getEventBroadcasts } from '@/actions/communications'
 import { getEventReport } from '@/actions/ai'
@@ -23,6 +23,9 @@ export default function ManageEventPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'settings' | 'scanner' | 'volunteers' | 'certificates' | 'teams' | 'winners' | 'broadcast' | 'daily-attendance' | 'schedule'>('overview')
   const [isScannerOnly, setIsScannerOnly] = useState(false)
   const [isUpdatingBanner, setIsUpdatingBanner] = useState(false)
+  const [isUpdatingTiming, setIsUpdatingTiming] = useState(false)
+  const [isGrantingAccess, setIsGrantingAccess] = useState(false)
+  const [facultyIdentifier, setFacultyIdentifier] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Volunteers State
@@ -259,6 +262,46 @@ export default function ManageEventPage() {
     else {
       setEvent({ ...event, category: newCategory })
       toast.success('Event category updated successfully!')
+    }
+  }
+
+  async function handleUpdateTiming(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const start_date = formData.get('start_date') as string
+    const end_date = formData.get('end_date') as string
+    
+    if (new Date(start_date) > new Date(end_date)) {
+      toast.error('End date cannot be before start date')
+      return
+    }
+
+    setIsUpdatingTiming(true)
+    const res = await updateEventTiming(eventId, start_date, end_date)
+    setIsUpdatingTiming(false)
+
+    if (res.error) {
+      toast.error(res.error)
+    } else {
+      toast.success('Event duration updated!')
+      setEvent((prev: any) => ({ ...prev, start_date, end_date }))
+    }
+  }
+
+  async function handleGrantFacultyAccess(e: React.FormEvent) {
+    e.preventDefault()
+    if (!facultyIdentifier.trim()) return
+    setIsGrantingAccess(true)
+    const res = await grantFacultyAccess(eventId, facultyIdentifier.trim())
+    setIsGrantingAccess(false)
+    if (res.error) {
+      toast.error(res.error)
+    } else {
+      toast.success('Access granted successfully!')
+      setFacultyIdentifier('')
+      if (activeTab === 'volunteers') {
+        fetchEventVolunteers(eventId).then(r => setVolunteers(r.volunteers || []))
+      }
     }
   }
 
@@ -666,9 +709,14 @@ export default function ManageEventPage() {
       )}
       {isScannerOnly && (
         <div className="flex gap-2 p-1 glass rounded-xl overflow-x-auto">
-          <button className="flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap bg-[hsl(var(--background))] shadow-sm">
+          <button onClick={() => setActiveTab('scanner')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'scanner' ? 'bg-[hsl(var(--background))] shadow-sm' : ''}`}>
             <div className="flex items-center justify-center gap-2"><QrCode className="w-4 h-4" /> QR Scanner</div>
           </button>
+          {event?.require_daily_attendance && (
+            <button onClick={() => setActiveTab('daily-attendance')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium whitespace-nowrap ${activeTab === 'daily-attendance' ? 'bg-[hsl(var(--background))] shadow-sm' : ''}`}>
+              <div className="flex items-center justify-center gap-2"><ClipboardCheck className="w-4 h-4" /> Daily Checks</div>
+            </button>
+          )}
         </div>
       )}
 
@@ -925,6 +973,50 @@ export default function ManageEventPage() {
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))] pointer-events-none" />
                 </div>
                 <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2">Only Competitive events have a Winner Leaderboard section.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Event Duration</label>
+                <form onSubmit={handleUpdateTiming} className="space-y-3 p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium mb-1">Start Date & Time</label>
+                      <input type="datetime-local" name="start_date" defaultValue={event.start_date?.slice(0, 16)} required className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1">End Date & Time</label>
+                      <input type="datetime-local" name="end_date" defaultValue={event.end_date?.slice(0, 16)} required className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <button type="submit" disabled={isUpdatingTiming} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium flex items-center gap-2 transition-colors disabled:opacity-50">
+                      {isUpdatingTiming ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Calendar className="w-3.5 h-3.5" />}
+                      Update Dates
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1.5 text-[hsl(var(--muted-foreground))]">Faculty Coordinator Access</label>
+                <form onSubmit={handleGrantFacultyAccess} className="space-y-3 p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)]">
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Grant Scanner & Attendance Access</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={facultyIdentifier}
+                        onChange={(e) => setFacultyIdentifier(e.target.value)}
+                        placeholder="Faculty Email or Roll No" 
+                        className="flex-1 px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" 
+                      />
+                      <button type="submit" disabled={isGrantingAccess || !facultyIdentifier.trim()} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium flex items-center justify-center transition-colors disabled:opacity-50">
+                        {isGrantingAccess ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Grant'}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2">Added faculty will appear in the Volunteers tab where you can manage or revoke their access.</p>
+                </form>
               </div>
 
               <div>
@@ -1467,8 +1559,6 @@ export default function ManageEventPage() {
                   type="date" 
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  min={event.start_date.split('T')[0]}
-                  max={event.end_date.split('T')[0]}
                   className="px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 />
                 <button 
@@ -1575,7 +1665,7 @@ export default function ManageEventPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium mb-1">Date</label>
-                    <input type="date" required value={scheduleForm.date} onChange={e => setScheduleForm({...scheduleForm, date: e.target.value})} min={event.start_date.split('T')[0]} max={event.end_date.split('T')[0]} className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm" />
+                    <input type="date" required value={scheduleForm.date} onChange={e => setScheduleForm({...scheduleForm, date: e.target.value})} className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1">Day Title</label>

@@ -10,6 +10,8 @@ export async function updateProfile(formData: FormData) {
   const full_name = formData.get('full_name') as string
   const bio = formData.get('bio') as string
   const department = formData.get('department') as string
+  const designation = formData.get('designation') as string
+  const college = formData.get('college') as string
   const course = formData.get('course') as string
   const phone = formData.get('phone') as string | null
   const email = formData.get('email') as string | null
@@ -28,7 +30,7 @@ export async function updateProfile(formData: FormData) {
   const { data: currentProfile } = await supabase.from('profiles').select('roll_no_updated, roll_no').eq('id', user.id).single()
   
   const updates: any = { 
-    full_name, bio, department, course, year, semester, skills,
+    full_name, bio, department, designation, college, course, year, semester, skills,
     instagram_url, linkedin_url, github_url,
     updated_at: new Date().toISOString() 
   }

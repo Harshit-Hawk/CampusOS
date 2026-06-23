@@ -5,6 +5,8 @@ export interface Profile {
   avatar_url?: string
   bio?: string
   department?: string
+  designation?: string
+  college?: string
   year?: number
   roll_no?: string
   username?: string

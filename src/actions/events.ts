@@ -1020,3 +1020,42 @@ export async function deleteScheduleDay(eventId: string, date: string) {
   if (error) return { error: error.message }
   return { success: true }
 }
+
+export async function grantFacultyAccess(eventId: string, identifier: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Must be admin or organizer
+  const [profileRes, eventRes] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('events').select('organizer_id').eq('id', eventId).single()
+  ])
+  
+  if (profileRes.data?.role !== 'admin' && eventRes.data?.organizer_id !== user.id) {
+    return { error: 'Unauthorized' }
+  }
+
+  // Find the faculty by email or roll no
+  const { data: faculty } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .or(`email.eq.${identifier},roll_no.eq.${identifier}`)
+    .maybeSingle()
+
+  if (!faculty) return { error: 'User not found with that Email or Roll No' }
+  if (faculty.role !== 'faculty' && faculty.role !== 'admin') return { error: 'User is not a faculty member' }
+
+  // Add to volunteers with can_scan
+  const { error } = await supabase
+    .from('event_volunteers')
+    .upsert({
+      event_id: eventId,
+      user_id: faculty.id,
+      status: 'approved',
+      can_scan: true
+    }, { onConflict: 'event_id, user_id' })
+
+  if (error) return { error: error.message }
+  return { success: true }
+}

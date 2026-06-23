@@ -67,7 +67,7 @@ export default function SearchPage() {
                     {user.is_verified && <VerifiedBadge type={user.verification_type} />}
                   </p>
                   <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">
-                    {user.username ? `@${user.username} • ` : ''}Roll No: {user.roll_no}
+                    {user.username ? `@${user.username}` : ''}
                   </p>
                 </div>
               </Link>
