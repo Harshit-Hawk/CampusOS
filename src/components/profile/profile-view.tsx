@@ -849,18 +849,17 @@ function PortfolioTab({
 // ─── Helper Components ──────────────────────────────────────────────
 
 function StatBox({ icon: Icon, title, value, iconColor, bg }: { icon: any, title: string, value: string | number, iconColor: string, bg: string }) {
-  const parts = title.split(' ')
   return (
-    <div className="glass rounded-3xl p-4 flex flex-col items-start gap-3 hover:-translate-y-1 transition-transform border border-[hsl(var(--border)/0.5)]">
-      <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm", bg, iconColor)}>
-        <Icon className="w-5 h-5" />
+    <div className="glass rounded-2xl p-3.5 flex flex-col justify-between gap-2 hover:-translate-y-1 transition-transform border border-[hsl(var(--border)/0.5)] h-full">
+      <div className="flex items-start justify-between w-full gap-2">
+        <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm", bg, iconColor)}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <p className="text-xl sm:text-2xl font-black mt-0.5">{value}</p>
       </div>
-      <div>
-        <p className="text-[9px] sm:text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-wider font-bold leading-tight line-clamp-2 min-h-[2.5em]">
-          {parts[0]}<br/>{parts.slice(1).join(' ') || ' '}
-        </p>
-        <p className="text-xl sm:text-2xl font-black mt-1">{value}</p>
-      </div>
+      <p className="text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-wider font-bold leading-tight mt-1">
+        {title}
+      </p>
     </div>
   )
 }
