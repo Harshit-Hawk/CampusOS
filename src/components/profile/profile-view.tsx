@@ -708,7 +708,7 @@ function PortfolioTab({
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Portfolio Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
         <StatBox icon={Award} title="XP Points" value={profile?.xp_points || 0} iconColor="text-amber-500" bg="bg-amber-500/10" />
         <StatBox icon={Medal} title="Certificates Verified" value={portfolio?.certificates?.length || 0} iconColor="text-emerald-500" bg="bg-emerald-500/10" />
         <StatBox icon={Users} title="Clubs Joined" value={portfolio?.clubs?.length || 0} iconColor="text-purple-500" bg="bg-purple-500/10" />
@@ -851,13 +851,15 @@ function PortfolioTab({
 function StatBox({ icon: Icon, title, value, iconColor, bg }: { icon: any, title: string, value: string | number, iconColor: string, bg: string }) {
   const parts = title.split(' ')
   return (
-    <div className="glass rounded-3xl p-4 flex items-center gap-3 hover:-translate-y-1 transition-transform border border-[hsl(var(--border)/0.5)]">
-      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm", bg, iconColor)}>
-        <Icon className="w-6 h-6" />
+    <div className="glass rounded-3xl p-4 flex flex-col items-start gap-3 hover:-translate-y-1 transition-transform border border-[hsl(var(--border)/0.5)]">
+      <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm", bg, iconColor)}>
+        <Icon className="w-5 h-5" />
       </div>
       <div>
-        <p className="text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-wider font-bold leading-tight">{parts[0]}<br/>{parts.slice(1).join(' ') || ' '}</p>
-        <p className="text-xl font-black mt-0.5">{value}</p>
+        <p className="text-[9px] sm:text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-wider font-bold leading-tight line-clamp-2 min-h-[2.5em]">
+          {parts[0]}<br/>{parts.slice(1).join(' ') || ' '}
+        </p>
+        <p className="text-xl sm:text-2xl font-black mt-1">{value}</p>
       </div>
     </div>
   )
