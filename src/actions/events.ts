@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { XP_REWARDS } from '@/lib/constants'
 import { awardXP, awardCC } from './gamification'
 
@@ -1046,8 +1047,13 @@ export async function grantFacultyAccess(eventId: string, identifier: string) {
   if (!faculty) return { error: 'User not found with that Email or Roll No' }
   if (faculty.role !== 'faculty' && faculty.role !== 'admin') return { error: 'User is not a faculty member' }
 
-  // Add to volunteers with can_scan
-  const { error } = await supabase
+  // Add to volunteers with can_scan, bypassing RLS as this is an administrative action
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { error } = await supabaseAdmin
     .from('event_volunteers')
     .upsert({
       event_id: eventId,

@@ -64,20 +64,34 @@ export function DigitalIDCard({ profile }: DigitalIDCardProps) {
             </p>
 
             <div className="w-full bg-white/10 rounded-xl p-3 backdrop-blur-md border border-white/10 text-left space-y-1.5 mt-auto mb-6">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-blue-200">Roll No</span>
-                <span className="font-bold tracking-wider">{profile.roll_no}</span>
-              </div>
-              {(profile.course || profile.department) && (
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-blue-200">Dept</span>
-                  <span className="font-bold">{profile.department || profile.course}</span>
+              {profile.role !== 'faculty' && profile.role !== 'admin' && (
+                <div className="flex justify-between items-center text-xs gap-4">
+                  <span className="text-blue-200 shrink-0">Roll No</span>
+                  <span className="font-bold tracking-wider truncate text-right">{profile.roll_no}</span>
                 </div>
               )}
-              {profile.year && (
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-blue-200">Valid Till</span>
-                  <span className="font-bold">{parseInt(profile.year) + 3}</span> {/* Placeholder valid till */}
+              {profile.role === 'faculty' && profile.designation && (
+                <div className="flex justify-between items-center text-xs gap-4">
+                  <span className="text-blue-200 shrink-0">Desig</span>
+                  <span className="font-bold truncate text-right" title={profile.designation}>{profile.designation}</span>
+                </div>
+              )}
+              {(profile.course || profile.department) && (
+                <div className="flex justify-between items-center text-xs gap-4">
+                  <span className="text-blue-200 shrink-0">Dept</span>
+                  <span className="font-bold truncate text-right" title={profile.department || profile.course}>{profile.department || profile.course}</span>
+                </div>
+              )}
+              {profile.role === 'faculty' && profile.college && (
+                <div className="flex justify-between items-center text-xs gap-4">
+                  <span className="text-blue-200 shrink-0">College</span>
+                  <span className="font-bold truncate text-right" title={profile.college}>{profile.college}</span>
+                </div>
+              )}
+              {profile.role !== 'faculty' && profile.year && (
+                <div className="flex justify-between items-center text-xs gap-4">
+                  <span className="text-blue-200 shrink-0">Valid Till</span>
+                  <span className="font-bold truncate text-right">{parseInt(profile.year) + 3}</span>
                 </div>
               )}
             </div>
