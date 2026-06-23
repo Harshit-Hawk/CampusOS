@@ -22,7 +22,6 @@ export async function getPortfolio(userId?: string) {
     { data: clubs },
     { data: events },
     { data: volunteerHistory },
-    { data: volunteerStats },
     { data: badges },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', targetUserId).single(),
@@ -46,10 +45,7 @@ export async function getPortfolio(userId?: string) {
       .select('status, hours_logged, performance_rating, events(title, start_date)')
       .eq('volunteer_id', targetUserId)
       .eq('status', 'completed'),
-    supabase.from('volunteer_stats')
-      .select('*')
-      .eq('user_id', targetUserId)
-      .single(),
+
     supabase.from('user_badges')
       .select('earned_at, badges(name, description, icon_url)')
       .eq('user_id', targetUserId)
@@ -80,7 +76,7 @@ export async function getPortfolio(userId?: string) {
     clubs: clubs || [],
     events: events || [],
     volunteerHistory: volunteerHistory || [],
-    volunteerStats: volunteerStats || { total_hours: 0, total_events: 0, avg_rating: 0 },
+
     badges: badges || [],
   }
 }

@@ -713,7 +713,6 @@ function PortfolioTab({
         <StatBox icon={Medal} title="Certificates Verified" value={portfolio?.certificates?.length || 0} iconColor="text-emerald-500" bg="bg-emerald-500/10" />
         <StatBox icon={Users} title="Clubs Joined" value={portfolio?.clubs?.length || 0} iconColor="text-purple-500" bg="bg-purple-500/10" />
         <StatBox icon={Calendar} title="Events Attended" value={portfolio?.events?.length || 0} iconColor="text-blue-500" bg="bg-blue-500/10" />
-        <StatBox icon={Heart} title="Hours Volunteered" value={`${portfolio?.volunteerStats?.total_hours?.toFixed(0) || 0}h`} iconColor="text-rose-500" bg="bg-rose-500/10" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
