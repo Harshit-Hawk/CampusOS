@@ -649,6 +649,9 @@ export default function ManageEventPage() {
     }
   }
 
+  const studentVolunteers = volunteers.filter(v => v.profiles?.role !== 'faculty' && v.profiles?.role !== 'admin')
+  const facultyCoordinators = volunteers.filter(v => (v.profiles?.role === 'faculty' || v.profiles?.role === 'admin') && v.status === 'approved')
+
   if (loading) return <div className="max-w-4xl mx-auto p-6"><div className="glass h-64 rounded-2xl animate-pulse" /></div>
   if (!event) return null
 
@@ -1015,7 +1018,36 @@ export default function ManageEventPage() {
                       </button>
                     </div>
                   </div>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2">Added faculty will appear in the Volunteers tab where you can manage or revoke their access.</p>
+                  {facultyCoordinators.length > 0 && (
+                    <div className="mt-4 space-y-2 pt-2 border-t border-[hsl(var(--border)/0.5)]">
+                      <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Granted Faculty</p>
+                      {facultyCoordinators.map(fc => (
+                        <div key={fc.id} className="flex items-center justify-between p-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border)/0.5)]">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                              {getInitials(fc.profiles?.full_name)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium truncate">{fc.profiles?.full_name}</p>
+                              <p className="text-[10px] text-[hsl(var(--muted-foreground))] truncate">{fc.profiles?.roll_no || fc.profiles?.email}</p>
+                            </div>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm('Revoke access for this faculty member?')) {
+                                handleProcessVolunteer(fc.id, 'rejected')
+                              }
+                            }}
+                            className="p-1.5 text-[hsl(var(--muted-foreground))] hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                            title="Revoke Access"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </form>
               </div>
 
@@ -1172,10 +1204,10 @@ export default function ManageEventPage() {
 
         {activeTab === 'volunteers' && (
           <div className="space-y-4">
-            <h3 className="text-lg font-bold mb-4">Volunteer Applications</h3>
-            {loadingVols ? <div className="animate-pulse space-y-3"><div className="h-16 bg-[hsl(var(--muted))] rounded-xl" /></div> : volunteers.length === 0 ? <p className="text-[hsl(var(--muted-foreground))] text-sm">No applications yet.</p> : (
+            <h3 className="text-lg font-bold mb-4">Student Volunteer Applications</h3>
+            {loadingVols ? <div className="animate-pulse space-y-3"><div className="h-16 bg-[hsl(var(--muted))] rounded-xl" /></div> : studentVolunteers.length === 0 ? <p className="text-[hsl(var(--muted-foreground))] text-sm">No student applications yet.</p> : (
               <div className="space-y-3">
-                {volunteers.map(v => (
+                {studentVolunteers.map(v => (
                   <div key={v.id} className="flex items-center justify-between p-4 rounded-xl bg-[hsl(var(--muted)/0.5)]">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full gradient-accent flex items-center justify-center text-white font-bold">{getInitials(v.profiles?.full_name)}</div>
