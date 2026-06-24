@@ -44,10 +44,10 @@ export function CommunitySettingsModal({ community }: { community: any }) {
     <>
       <button 
         onClick={() => setIsOpen(true)}
-        className="mt-3 w-full flex items-center justify-center gap-2 py-1.5 rounded-lg bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted-foreground)/0.2)] text-xs font-semibold transition-colors"
+        className="p-1.5 rounded-lg text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors shrink-0"
+        title="Community Settings"
       >
-        <Settings className="w-3 h-3" />
-        Settings
+        <Settings className="w-4 h-4" />
       </button>
 
       {isOpen && mounted && createPortal(

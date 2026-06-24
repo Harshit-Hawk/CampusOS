@@ -35,7 +35,7 @@ export function ClientLayout({
         `}>
 
           {/* Header */}
-          <div className="px-5 pt-6 pb-5 border-b border-[hsl(var(--border)/0.5)] flex items-start gap-4 shrink-0 relative group">
+          <div className="px-5 pt-6 pb-5 border-b border-[hsl(var(--border)/0.5)] flex items-start gap-4 shrink-0 relative">
             <Link href="/communities" className="md:hidden absolute top-4 right-4 p-2 rounded-full hover:bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors z-10">
               <ChevronLeft className="w-6 h-6" />
             </Link>
@@ -48,7 +48,7 @@ export function ClientLayout({
               )}
             </div>
             
-            <div className="flex flex-col min-w-0 pt-0.5">
+            <div className="flex flex-col min-w-0 pt-0.5 flex-1 pr-2">
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-[hsl(var(--foreground))] text-lg leading-tight truncate">{community.name}</h2>
                 <div className="w-4 h-4 bg-indigo-500 rounded flex items-center justify-center shrink-0">
@@ -64,7 +64,7 @@ export function ClientLayout({
             </div>
             
             {isAdmin && (
-              <div className="absolute bottom-5 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="pt-0.5 shrink-0">
                 <CommunitySettingsModal community={community} />
               </div>
             )}
