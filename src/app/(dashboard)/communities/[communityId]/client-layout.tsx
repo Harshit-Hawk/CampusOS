@@ -35,12 +35,12 @@ export function ClientLayout({
         `}>
 
           {/* Header */}
-          <div className="px-5 pt-6 pb-5 border-b border-[hsl(var(--border)/0.5)] flex items-start gap-4 shrink-0 relative">
-            <Link href="/communities" className="md:hidden absolute top-4 right-4 p-2 rounded-full hover:bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors z-10">
+          <div className="px-4 md:px-5 pt-6 pb-5 border-b border-[hsl(var(--border)/0.5)] flex items-start gap-3 md:gap-4 shrink-0 relative">
+            <Link href="/communities" className="md:hidden mt-2 p-1.5 -ml-2 rounded-full hover:bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors shrink-0">
               <ChevronLeft className="w-6 h-6" />
             </Link>
 
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
+            <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
               {community.avatar_url ? (
                 <img src={community.avatar_url} alt="" className="w-full h-full object-cover rounded-2xl" />
               ) : (
