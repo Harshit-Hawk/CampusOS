@@ -1594,7 +1594,10 @@ export default function ManageEventPage() {
                   className="px-3 py-2 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 />
                 <button 
-                  onClick={() => window.open(`/api/events/${eventId}/attendance-csv?date=${selectedDate}`, '_blank')}
+                  onClick={() => {
+                    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+                    window.open(`/api/events/${eventId}/attendance-csv?date=${selectedDate}&tz=${encodeURIComponent(tz)}`, '_blank')
+                  }}
                   className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium transition-colors"
                 >
                   <Download className="w-4 h-4" /> Export Today

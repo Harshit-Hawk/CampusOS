@@ -8,6 +8,7 @@ export async function GET(
   const { id: eventId } = await params
   const searchParams = request.nextUrl.searchParams
   const date = searchParams.get('date')
+  const tz = searchParams.get('tz') || 'UTC'
 
   if (!date) {
     return new NextResponse('Date parameter is required', { status: 400 })
@@ -58,11 +59,11 @@ export async function GET(
     let status = 'Absent'
 
     if (log?.check_in_time) {
-      checkIn = new Date(log.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      checkIn = new Date(log.check_in_time).toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit' })
       status = 'Present'
     }
     if (log?.check_out_time) {
-      checkOut = new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      checkOut = new Date(log.check_out_time).toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit' })
     }
 
     return [
