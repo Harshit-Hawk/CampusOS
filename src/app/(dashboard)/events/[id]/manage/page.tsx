@@ -12,6 +12,7 @@ import { Scanner } from '@yudiel/react-qr-scanner'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
+import { CertificateConfig } from '@/components/events/certificate-config'
 
 export default function ManageEventPage() {
   const params = useParams()
@@ -346,6 +347,27 @@ export default function ManageEventPage() {
 
   async function handleIssueAllCertificates(type: 'participants' | 'volunteers') {
     setIssuingAllCerts(true)
+    
+    if (event.certificate_template_url) {
+      toast.info('Generating dynamic certificates...')
+      try {
+        const res = await fetch(`/api/events/${eventId}/issue-certificates`, { method: 'POST' })
+        if (!res.ok) {
+          const errText = await res.text()
+          throw new Error(errText)
+        }
+        const data = await res.json()
+        toast.success(`Successfully generated ${data.count} certificates!`)
+        fetchEventCertificates(eventId).then(r => setCertificates(r.certificates || []))
+      } catch (e: any) {
+        toast.error(e.message || 'An error occurred during generation.')
+      } finally {
+        setIssuingAllCerts(false)
+      }
+      return
+    }
+
+    // Fallback to text-based certificates if no template
     const isVolunteer = type === 'volunteers'
     const title = isVolunteer ? `Certificate of Volunteering: ${event.title}` : `Certificate of Participation: ${event.title}`
     const desc = isVolunteer ? `Awarded for dedicated volunteer service at ${event.title}.` : `Awarded for actively participating in ${event.title}.`
@@ -366,7 +388,6 @@ export default function ManageEventPage() {
     toast.info(`Issuing ${targets.length} certificates...`)
 
     try {
-      // Process in batches of 5 to avoid overwhelming network/DB
       let successCount = 0
       for (let i = 0; i < targets.length; i += 5) {
         const batch = targets.slice(i, i + 5)
@@ -1250,6 +1271,20 @@ export default function ManageEventPage() {
 
         {activeTab === 'certificates' && (
           <div className="space-y-8">
+            <CertificateConfig 
+              eventId={eventId}
+              initialConfig={{
+                template_url: event.certificate_template_url,
+                text_x: event.cert_text_x,
+                text_y: event.cert_text_y,
+                font_size: event.cert_font_size,
+                text_color: event.cert_text_color
+              }}
+              onUpdate={() => {
+                fetchEvent(eventId).then(res => setEvent(res.event))
+              }}
+            />
+
             <div>
               <h3 className="text-lg font-bold mb-2">Issue Certificates</h3>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">Award certificates to verified attendees and approved volunteers.</p>
