@@ -82,9 +82,16 @@ export async function POST(
       const buffer = canvas.toBuffer('image/png')
 
       // Upload to Storage
-      const fileName = `${eventId}/${userId}_certificate.png`
+      // Create admin client to bypass RLS for automated certificate generation
+      const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+      const supabaseAdmin = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+
+      const fileName = `${eventId}/${userId}_certificate_${Date.now()}.png`
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
         .from('certificates')
         .upload(fileName, buffer, {
           contentType: 'image/png',
@@ -96,13 +103,13 @@ export async function POST(
         continue
       }
 
-      const { data: publicUrlData } = supabase.storage
+      const { data: publicUrlData } = supabaseAdmin.storage
         .from('certificates')
         .getPublicUrl(fileName)
 
       // Insert/Update into certificates table
       // Check if it already exists
-      const { data: existingCert } = await supabase
+      const { data: existingCert } = await supabaseAdmin
         .from('certificates')
         .select('id')
         .eq('user_id', userId)
@@ -110,12 +117,12 @@ export async function POST(
         .single()
 
       if (existingCert) {
-        await supabase.from('certificates').update({
+        await supabaseAdmin.from('certificates').update({
           image_url: publicUrlData.publicUrl,
           issue_date: new Date().toISOString()
         }).eq('id', existingCert.id)
       } else {
-        await supabase.from('certificates').insert({
+        await supabaseAdmin.from('certificates').insert({
           user_id: userId,
           event_id: eventId,
           issuer_id: (await supabase.auth.getUser()).data.user?.id,
