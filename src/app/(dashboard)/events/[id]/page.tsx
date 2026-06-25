@@ -32,6 +32,7 @@ export default function EventDetailPage() {
   const [schedule, setSchedule] = useState<any[]>([])
 
   const [isVolunteering, setIsVolunteering] = useState(false)
+  const [volunteerStatus, setVolunteerStatus] = useState<string | null>(null)
   const [canScan, setCanScan] = useState(false)
 
   // Interaction State
@@ -69,6 +70,7 @@ export default function EventDetailPage() {
         const { data: vol } = await supabase.from('event_volunteers').select('*').eq('event_id', eventId).eq('user_id', user.id).single()
         if (vol) {
           setIsVolunteering(true)
+          setVolunteerStatus(vol.status)
           if (vol.can_scan && vol.status === 'approved') setCanScan(true)
         }
 
@@ -333,7 +335,11 @@ export default function EventDetailPage() {
                 disabled={actionLoading || isVolunteering}
                 className="flex-1 sm:flex-none sm:px-6 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted)/0.8)] border border-[hsl(var(--border))]"
               >
-                {isVolunteering ? <><Check className="w-4 h-4 text-green-500" /> Applied</> : <><HandHeart className="w-4 h-4 text-blue-400" /> Volunteer</>}
+                {isVolunteering ? (
+                  volunteerStatus === 'rejected' ? <><X className="w-4 h-4 text-red-500" /> Rejected</> :
+                  volunteerStatus === 'approved' ? <><Check className="w-4 h-4 text-green-500" /> Approved</> :
+                  <><Clock className="w-4 h-4 text-yellow-500" /> Applied</>
+                ) : <><HandHeart className="w-4 h-4 text-blue-400" /> Volunteer</>}
               </button>
             </div>
           )}

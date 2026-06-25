@@ -151,11 +151,12 @@ export async function registerForEvent(eventId: string) {
     }
   }
 
-  // Prevent volunteers from registering as participants
+  // Prevent volunteers from registering as participants, unless rejected
   const { data: volunteer } = await (supabase.from('event_volunteers') as any)
-    .select('id')
+    .select('id, status')
     .eq('event_id', eventId)
     .eq('user_id', user.id)
+    .neq('status', 'rejected')
     .maybeSingle()
   if (volunteer) return { error: 'You are already a volunteer for this event' }
   if (ev?.max_attendees && ev.registered_count >= ev.max_attendees) {
@@ -214,11 +215,12 @@ export async function registerForTeamEvent(
     }
   }
 
-  // Prevent volunteers from registering as participants
+  // Prevent volunteers from registering as participants, unless rejected
   const { data: volunteer } = await (supabase.from('event_volunteers') as any)
-    .select('id')
+    .select('id, status')
     .eq('event_id', eventId)
     .eq('user_id', user.id)
+    .neq('status', 'rejected')
     .maybeSingle()
   if (volunteer) return { error: 'You are already a volunteer for this event' }
   if (ev?.max_attendees && ev.registered_count >= ev.max_attendees) {
