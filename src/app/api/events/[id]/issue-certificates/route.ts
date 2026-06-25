@@ -116,21 +116,24 @@ export async function POST(
       const buffer = canvas.toBuffer('image/png')
 
       // Upload to Storage
-      // Use the issuer's user ID as the first folder to satisfy the RLS policy
       const issuerId = (await supabase.auth.getUser()).data.user?.id
-      const fileName = `${issuerId}/${eventId}/${userId}_certificate_${Date.now()}.png`
+      const fileName = `${eventId}/${userId}_${Date.now()}.png`
+      
+      console.log(`Uploading certificate for user ${userId}, file: ${fileName}`)
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('certificates')
         .upload(fileName, buffer, {
           contentType: 'image/png',
-          upsert: false // We use unique filenames (Date.now()) so upsert is not needed
+          upsert: true
         })
 
       if (uploadError) {
-        console.error('Failed to upload certificate for user', userId, uploadError)
+        console.error('Upload error details:', JSON.stringify(uploadError))
         continue
       }
+
+      console.log('Upload success:', uploadData)
 
       const { data: publicUrlData } = supabase.storage
         .from('certificates')
