@@ -24,22 +24,56 @@ export async function POST(
       return new NextResponse('Certificate template or coordinates not configured', { status: 400 })
     }
 
+    // Check if a specific userId was requested
+    let targetUserId = null
+    try {
+      const body = await request.json()
+      if (body.userId) targetUserId = body.userId
+    } catch (e) {
+      // Ignore JSON parse error if body is empty
+    }
+
     // 2. Fetch all Present registrations
     // A user is 'Present' if they have a check_in_time for this event. 
     // We'll just look at the event_registrations and check if there is an entry in event_daily_attendance.
-    const { data: attendees } = await supabase
+    let query = supabase
       .from('event_daily_attendance')
       .select('user_id, profiles(full_name)')
       .eq('event_id', eventId)
       .not('check_in_time', 'is', null)
 
-    if (!attendees || attendees.length === 0) {
-      return new NextResponse('No present attendees found', { status: 400 })
+    if (targetUserId) {
+      query = query.eq('user_id', targetUserId)
+    }
+
+    const { data: attendees } = await query
+
+    let finalAttendees: any[] = attendees ? [...attendees] : []
+
+    if (finalAttendees.length === 0) {
+      // For volunteers, they might not have daily attendance check-ins but we still want to issue them a certificate
+      // Let's also check if the targetUserId is an approved volunteer
+      if (targetUserId) {
+        const { data: volunteer } = await supabase
+          .from('event_volunteers')
+          .select('user_id, profiles(full_name)')
+          .eq('event_id', eventId)
+          .eq('user_id', targetUserId)
+          .eq('status', 'approved')
+        
+        if (volunteer && volunteer.length > 0) {
+          finalAttendees.push(...volunteer)
+        } else {
+          return new NextResponse('User not found or not checked in', { status: 400 })
+        }
+      } else {
+        return new NextResponse('No present attendees found', { status: 400 })
+      }
     }
 
     // Use a Map to deduplicate users just in case they have multiple attendance logs for multi-day events
     const uniqueUsers = new Map()
-    for (const a of attendees) {
+    for (const a of finalAttendees) {
       if (!uniqueUsers.has(a.user_id)) {
         uniqueUsers.set(a.user_id, a.profiles?.full_name || 'Participant')
       }

@@ -246,15 +246,33 @@ export default function ManageEventPage() {
     }
   }
 
-  async function handleIssueCertificate(userId: string, isVolunteer: boolean = false) {
+  async function handleIssueCertificate(userId: string, isVolunteer: boolean) {
+    if (event.certificate_template_url) {
+      toast.info('Generating dynamic certificate...')
+      try {
+        const res = await fetch(`/api/events/${eventId}/issue-certificates`, { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        })
+        if (!res.ok) throw new Error(await res.text())
+        toast.success('Successfully generated certificate!')
+        fetchEventCertificates(eventId).then(r => setCertificates(r.certificates || []))
+      } catch (e: any) {
+        toast.error(e.message || 'Failed to generate certificate')
+      }
+      return
+    }
+
     const title = isVolunteer ? `Certificate of Volunteering: ${event.title}` : `Certificate of Participation: ${event.title}`
     const desc = isVolunteer ? `Awarded for dedicated volunteer service at ${event.title}.` : `Awarded for actively participating in ${event.title}.`
     const res = await issueCertificate(eventId, userId, title, desc)
-    if (res.error) toast.error(res.error)
-    else {
-      toast.success('Certificate issued!')
-      fetchEventCertificates(eventId).then(r => setCertificates(r.certificates || []))
+    if (res.error) {
+      toast.error(res.error)
+      return
     }
+    toast.success('Certificate issued!')
+    setCertificates(prev => [...prev, res.data])
   }
 
   async function handleUpdateCategory(newCategory: string) {
