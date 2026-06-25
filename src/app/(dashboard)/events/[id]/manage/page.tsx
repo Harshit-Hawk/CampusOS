@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { fetchEvent, fetchEventVolunteers, processVolunteer, fetchEventAttendees, checkInAttendee, fetchEventTeamsWithMembers, fetchAllEventRegistrations, fetchEventWinners, markEventWinner, removeEventWinner, publishEventFeedback, fetchDailyAttendanceLogs, fetchAllDailyAttendanceLogs, markDailyCheckIn, markDailyCheckOut, updateEventCategory, updateVolunteerAccess, updateEventBanner, processSmartScan, deleteEvent, fetchEventSchedule, upsertScheduleDay, deleteScheduleDay, updateEventTiming, grantFacultyAccess } from '@/actions/events'
-import { fetchEventCertificates, issueCertificate } from '@/actions/certificates'
+import { fetchEventCertificates, issueCertificate, resetEventCertificates } from '@/actions/certificates'
 import { sendEventBroadcast, getEventBroadcasts } from '@/actions/communications'
 import { getEventReport } from '@/actions/ai'
 import { getInitials } from '@/lib/utils'
@@ -402,6 +402,22 @@ export default function ManageEventPage() {
       fetchEventCertificates(eventId).then(r => setCertificates(r.certificates || []))
     } catch (e) {
       toast.error('An error occurred during bulk issuance.')
+    } finally {
+      setIssuingAllCerts(false)
+    }
+  }
+
+  async function handleResetCertificates() {
+    if (!window.confirm('Are you sure you want to reset and delete ALL issued certificates for this event? This action cannot be undone.')) return
+    
+    setIssuingAllCerts(true)
+    try {
+      const res = await resetEventCertificates(eventId)
+      if (res.error) throw new Error(res.error)
+      toast.success('Successfully reset all certificates!')
+      setCertificates([])
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to reset certificates.')
     } finally {
       setIssuingAllCerts(false)
     }
@@ -1285,9 +1301,21 @@ export default function ManageEventPage() {
               }}
             />
 
-            <div>
-              <h3 className="text-lg font-bold mb-2">Issue Certificates</h3>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">Award certificates to verified attendees and approved volunteers.</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold mb-2">Issue Certificates</h3>
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">Award certificates to verified attendees and approved volunteers.</p>
+              </div>
+              {certificates.length > 0 && (
+                <button
+                  onClick={handleResetCertificates}
+                  disabled={issuingAllCerts}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 text-xs font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Reset All
+                </button>
+              )}
             </div>
 
             {/* Participants Section */}
