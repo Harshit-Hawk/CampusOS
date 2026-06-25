@@ -41,13 +41,24 @@ export default async function VerifyCertificatePage({ params }: { params: Promis
             Verified Authentic
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-bold mb-4 font-serif text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-sky-500 to-blue-500">
-            {certificate.title}
-          </h1>
+          {certificate.image_url ? (
+            <div className="w-full mb-8 rounded-2xl overflow-hidden border-4 border-[hsl(var(--border))] shadow-2xl relative">
+              <img src={certificate.image_url} alt={certificate.title} className="w-full h-auto object-contain" />
+              <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 backdrop-blur-md bg-opacity-90">
+                <CheckCircle2 className="w-4 h-4" /> Verified
+              </div>
+            </div>
+          ) : (
+            <>
+              <h1 className="text-3xl md:text-5xl font-bold mb-4 font-serif text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-sky-500 to-blue-500">
+                {certificate.title}
+              </h1>
 
-          <p className="text-lg md:text-xl text-[hsl(var(--muted-foreground))] mb-8 max-w-lg leading-relaxed">
-            {certificate.description}
-          </p>
+              <p className="text-lg md:text-xl text-[hsl(var(--muted-foreground))] mb-8 max-w-lg leading-relaxed">
+                {certificate.description}
+              </p>
+            </>
+          )}
 
           <div className="w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--border))] to-transparent my-8" />
 
