@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import { CertificateConfig } from '@/components/events/certificate-config'
+import { DocxReportModal } from '@/components/events/docx-report-modal'
 
 export default function ManageEventPage() {
   const params = useParams()
@@ -50,6 +51,7 @@ export default function ManageEventPage() {
   const [issuingAllCerts, setIssuingAllCerts] = useState(false)
 
   const [exporting, setExporting] = useState(false)
+  const [showDocxModal, setShowDocxModal] = useState(false)
 
   // Winners State
   const [winners, setWinners] = useState<any[]>([])
@@ -567,6 +569,7 @@ export default function ManageEventPage() {
     }
   }
 
+
   async function handleToggleFeedback() {
     if (!event.feedback_published) {
       // Open the modal to configure custom questions before publishing
@@ -792,6 +795,10 @@ export default function ManageEventPage() {
                   {generatingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                   {generatingReport ? 'Generating...' : 'AI Report'}
                 </button>
+                <button onClick={() => setShowDocxModal(true)} className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
+                  <FileText className="w-4 h-4" />
+                  Generate DOCX
+                </button>
                 <button onClick={handleExportCSV} disabled={exporting} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50">
                   {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   Export CSV
@@ -906,6 +913,15 @@ export default function ManageEventPage() {
                         margin-bottom: 0.5rem !important;
                         border: none !important;
                       }
+                      .print-prose table {
+                        width: 100% !important;
+                        border-collapse: collapse !important;
+                        margin-top: 1.5rem !important;
+                      }
+                      .print-prose th, .print-prose td {
+                        border: 1px solid #000 !important;
+                        padding: 8px !important;
+                      }
                       .print-prose strong { color: #000 !important; font-weight: bold !important; }
                       .print-prose ul { margin-top: 0.5rem !important; margin-bottom: 1rem !important; padding-left: 20px !important; }
                       .print-prose li { margin-bottom: 0.25rem !important; }
@@ -954,7 +970,7 @@ export default function ManageEventPage() {
                     }
                   `}} />
                   
-                  <div className="text-center mb-8 print-header print:text-center print:block">
+              <div className="text-center mb-8 print-header print:text-center print:block">
                     <h1 className="text-3xl font-black mb-2 uppercase tracking-tight print-title">{event.title}</h1>
                     <p className="text-gray-500 dark:text-gray-400 font-medium text-sm print-subtitle">Post-Event Report</p>
                     <p className="hidden print:block text-sm mt-1 print-subtitle">Date Generated: {new Date(eventReport.created_at).toLocaleDateString()}</p>
@@ -962,6 +978,96 @@ export default function ManageEventPage() {
                   
                   <div className="prose prose-sm dark:prose-invert max-w-none mb-8 print-prose">
                     <ReactMarkdown>{eventReport.ai_summary}</ReactMarkdown>
+
+                    <h3 className="text-xl font-bold mt-12 mb-4 border-b pb-2">Formal Event Report Preview</h3>
+                    <div className="border border-[hsl(var(--border))] print:border-black rounded-lg overflow-hidden my-6">
+                      <table className="w-full text-left text-sm border-collapse">
+                        <thead>
+                          <tr className="bg-[hsl(var(--muted)/0.5)] print:bg-gray-100 border-b border-[hsl(var(--border))] print:border-black">
+                            <th className="p-3 border-r border-[hsl(var(--border))] print:border-black font-bold w-16">S. No.</th>
+                            <th className="p-3 border-r border-[hsl(var(--border))] print:border-black font-bold w-1/3">Particulars</th>
+                            <th className="p-3 font-bold">Remarks / Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">1</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Name of Event / Activity</td>
+                            <td className="p-3">{event.title}</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">2</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Organizing Department</td>
+                            <td className="p-3">{event.clubs?.name || '--'}</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">3</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Activity Coordinator</td>
+                            <td className="p-3">{event.faculty_coordinators?.[0] || event.organizer_name || '--'}</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">4</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Date and Time</td>
+                            <td className="p-3">{new Date(event.start_time).toLocaleDateString()} {new Date(event.start_time).toLocaleTimeString()}</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">5</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Target Audience / Participants</td>
+                            <td className="p-3">Students</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">6</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Expected Outcome</td>
+                            <td className="p-3 italic text-[hsl(var(--muted-foreground))] print:text-gray-500">Generated upon DOCX download</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">7</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Chief Guest / Other Guest</td>
+                            <td className="p-3 italic text-[hsl(var(--muted-foreground))] print:text-gray-500">Generated upon DOCX download</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">8</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Judges Detail</td>
+                            <td className="p-3 italic text-[hsl(var(--muted-foreground))] print:text-gray-500">Generated upon DOCX download</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">9</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Total Number of Participants</td>
+                            <td className="p-3">{checkedInList.length || event.registered_count || 0}</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">10</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Results / Winners Detail</td>
+                            <td className="p-3 italic text-[hsl(var(--muted-foreground))] print:text-gray-500">Generated upon DOCX download</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">11</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Assessment Criteria</td>
+                            <td className="p-3 italic text-[hsl(var(--muted-foreground))] print:text-gray-500">Generated upon DOCX download</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">12</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Rules and Regulations</td>
+                            <td className="p-3 italic text-[hsl(var(--muted-foreground))] print:text-gray-500">Generated upon DOCX download</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">13</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Copy of Glimpses (News etc.)</td>
+                            <td className="p-3">{event.photos?.length ? 'Photos attached in Report' : 'Not attached'}</td>
+                          </tr>
+                          <tr className="border-b border-[hsl(var(--border))] print:border-black">
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">14</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Bills Details</td>
+                            <td className="p-3 italic text-[hsl(var(--muted-foreground))] print:text-gray-500">Generated upon DOCX download</td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">15</td>
+                            <td className="p-3 border-r border-[hsl(var(--border))] print:border-black">Items Received and Issued</td>
+                            <td className="p-3 italic text-[hsl(var(--muted-foreground))] print:text-gray-500">Generated upon DOCX download</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
                   {eventReport.report_data?.photos?.length > 0 && (
@@ -1988,6 +2094,7 @@ export default function ManageEventPage() {
           </div>
         </div>
       )}
+      <DocxReportModal eventId={eventId} open={showDocxModal} onClose={() => setShowDocxModal(false)} />
     </div>
   )
 }
